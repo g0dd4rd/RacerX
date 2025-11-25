@@ -1,2 +1,2 @@
 # RacerX
-Multi-track recrding DAW for Linux. 100% vibe-coded.
+Multi-track recording DAW for Linux. 100% vibe-coded.

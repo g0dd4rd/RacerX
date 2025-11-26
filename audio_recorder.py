@@ -110,6 +110,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         
         self.playing_track = None
         self.play_process = None
+        self.monitor_latency = '64'  # Latency in samples for monitoring
         
         # Header bar
         header_bar = Adw.HeaderBar()
@@ -446,7 +447,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             monitor_record = subprocess.Popen([
                 'pw-record',
                 '--target', 'auto',
-                '--latency', '64',
+                '--latency', self.monitor_latency,
                 '--rate', '48000',
                 '-'
             ], stdout=subprocess.PIPE)
@@ -454,7 +455,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             monitor_play = subprocess.Popen([
                 'pw-play',
                 '--target', 'auto',
-                '--latency', '64',
+                '--latency', self.monitor_latency,
                 '--rate', '48000',
                 '-'
             ], stdin=monitor_record.stdout)

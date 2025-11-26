@@ -237,6 +237,72 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         self.add_action(action)
     
     def on_new_project(self, action, param):
+        # Check if there are unsaved changes
+        if self.has_unsaved_changes():
+            self.show_save_confirmation_dialog(self.create_new_project)
+        else:
+            self.create_new_project()
+    
+    def has_unsaved_changes(self):
+        """Check if there are any tracks with recordings"""
+        app = self.get_application()
+        return any(t.temp_file and os.path.exists(t.temp_file) for t in app.tracks)
+    
+    def show_save_confirmation_dialog(self, callback):
+        """Show dialog asking if user wants to save before proceeding"""
+        dialog = Adw.MessageDialog.new(self)
+        dialog.set_heading("Save current project?")
+        dialog.set_body("You have unsaved work. Do you want to save it before continuing?")
+        
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("discard", "Don't Save")
+        dialog.add_response("save", "Save")
+        
+        dialog.set_response_appearance("discard", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_response_appearance("save", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("save")
+        dialog.set_close_response("cancel")
+        
+        dialog.connect("response", self.on_save_confirmation_response, callback)
+        dialog.present()
+    
+    def on_save_confirmation_response(self, dialog, response, callback):
+        if response == "save":
+            # Save first, then proceed
+            app = self.get_application()
+            if app.project_file:
+                self.save_project(app.project_file)
+                callback()
+            else:
+                # Need to save as - show save dialog
+                self.pending_callback = callback
+                save_dialog = Gtk.FileDialog.new()
+                save_dialog.set_title("Save Project As")
+                save_dialog.set_initial_name("project.atr")
+                save_dialog.save(self, None, self.on_save_before_action_response)
+        elif response == "discard":
+            # Proceed without saving
+            callback()
+        # If "cancel", do nothing
+    
+    def on_save_before_action_response(self, dialog, result):
+        try:
+            file = dialog.save_finish(result)
+            if file:
+                project_path = file.get_path()
+                if not project_path.endswith('.atr'):
+                    project_path += '.atr'
+                self.save_project(project_path)
+                
+                # Execute the pending callback
+                if hasattr(self, 'pending_callback'):
+                    self.pending_callback()
+                    delattr(self, 'pending_callback')
+        except Exception as e:
+            if "dismissed" not in str(e).lower():
+                self.show_error_dialog(f"Failed to save project: {str(e)}")
+    
+    def create_new_project(self):
         app = self.get_application()
         
         # Clear current project
@@ -254,6 +320,13 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         self.update_title()
     
     def on_open_project(self, action, param):
+        # Check if there are unsaved changes
+        if self.has_unsaved_changes():
+            self.show_save_confirmation_dialog(self.show_open_project_dialog)
+        else:
+            self.show_open_project_dialog()
+    
+    def show_open_project_dialog(self):
         dialog = Gtk.FileDialog.new()
         dialog.set_title("Open Project")
         

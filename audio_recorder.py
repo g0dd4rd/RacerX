@@ -3,13 +3,14 @@
 import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
-from gi.repository import Gtk, Adw, GLib
+from gi.repository import Gtk, Adw, GLib, Gio
 import subprocess
 import os
 import tempfile
 from pathlib import Path
 import wave
-import struct
+import json
+import shutil
 
 class Track:
     def __init__(self, name, temp_file=None):
@@ -25,6 +26,7 @@ class AudioRecorderApp(Adw.Application):
         self.monitor_process = None
         self.tracks = []
         self.next_track_number = 1
+        self.project_file = None
         
     def do_activate(self):
         win = AudioRecorderWindow(application=self)
@@ -115,12 +117,37 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         # Header bar
         header_bar = Adw.HeaderBar()
         
+        # Menu button
+        menu_button = Gtk.MenuButton()
+        menu_button.set_icon_name("open-menu-symbolic")
+        
+        menu = Gio.Menu()
+        
+        # Project section
+        project_section = Gio.Menu()
+        project_section.append("New Project", "win.new_project")
+        project_section.append("Open Project", "win.open_project")
+        project_section.append("Save Project", "win.save_project")
+        project_section.append("Save Project As...", "win.save_project_as")
+        menu.append_section(None, project_section)
+        
+        # Import section
+        import_section = Gio.Menu()
+        import_section.append("Import Audio File", "win.import_audio")
+        menu.append_section(None, import_section)
+        
+        menu_button.set_menu_model(menu)
+        header_bar.pack_start(menu_button)
+        
         # Monitor toggle button in header
         self.monitor_toggle = Gtk.ToggleButton()
         self.monitor_toggle.set_icon_name("audio-volume-high-symbolic")
         self.monitor_toggle.set_tooltip_text("Enable/Disable Monitoring")
         self.monitor_toggle.connect("toggled", self.on_monitor_toggled)
         header_bar.pack_end(self.monitor_toggle)
+        
+        # Actions
+        self.create_actions()
         
         # Toolbar view to combine header and content
         toolbar_view = Adw.ToolbarView()
@@ -183,6 +210,254 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         # Add first track by default
         self.add_track()
         
+    def create_actions(self):
+        # New Project
+        action = Gio.SimpleAction.new("new_project", None)
+        action.connect("activate", self.on_new_project)
+        self.add_action(action)
+        
+        # Open Project
+        action = Gio.SimpleAction.new("open_project", None)
+        action.connect("activate", self.on_open_project)
+        self.add_action(action)
+        
+        # Save Project
+        action = Gio.SimpleAction.new("save_project", None)
+        action.connect("activate", self.on_save_project)
+        self.add_action(action)
+        
+        # Save Project As
+        action = Gio.SimpleAction.new("save_project_as", None)
+        action.connect("activate", self.on_save_project_as)
+        self.add_action(action)
+        
+        # Import Audio
+        action = Gio.SimpleAction.new("import_audio", None)
+        action.connect("activate", self.on_import_audio)
+        self.add_action(action)
+    
+    def on_new_project(self, action, param):
+        app = self.get_application()
+        
+        # Clear current project
+        while self.track_list.get_first_child():
+            row = self.track_list.get_first_child()
+            self.on_track_delete(row)
+        
+        app.tracks = []
+        app.next_track_number = 1
+        app.project_file = None
+        
+        # Add first track
+        self.add_track()
+        self.status_label.set_label("New project created")
+        self.update_title()
+    
+    def on_open_project(self, action, param):
+        dialog = Gtk.FileDialog.new()
+        dialog.set_title("Open Project")
+        
+        # Filter for .atr files (Audio Track Recorder)
+        filter_atr = Gtk.FileFilter()
+        filter_atr.set_name("Audio Recorder Projects (*.atr)")
+        filter_atr.add_pattern("*.atr")
+        
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(filter_atr)
+        dialog.set_filters(filters)
+        
+        dialog.open(self, None, self.on_open_project_response)
+    
+    def on_open_project_response(self, dialog, result):
+        try:
+            file = dialog.open_finish(result)
+            if file:
+                self.load_project(file.get_path())
+        except Exception as e:
+            if "dismissed" not in str(e).lower():
+                self.show_error_dialog(f"Failed to open project: {str(e)}")
+    
+    def load_project(self, project_path):
+        app = self.get_application()
+        
+        try:
+            with open(project_path, 'r') as f:
+                project_data = json.load(f)
+            
+            # Clear current tracks
+            while self.track_list.get_first_child():
+                row = self.track_list.get_first_child()
+                self.on_track_delete(row)
+            
+            app.tracks = []
+            app.project_file = project_path
+            project_dir = os.path.dirname(project_path)
+            
+            # Load tracks
+            for track_data in project_data['tracks']:
+                track = Track(track_data['name'])
+                
+                # Copy audio file to temp location
+                audio_file = os.path.join(project_dir, track_data['audio_file'])
+                if os.path.exists(audio_file):
+                    fd, track.temp_file = tempfile.mkstemp(suffix='.wav')
+                    os.close(fd)
+                    shutil.copy2(audio_file, track.temp_file)
+                
+                app.tracks.append(track)
+                
+                row = TrackRow(
+                    track,
+                    self.on_track_record,
+                    self.on_track_stop,
+                    self.on_track_play,
+                    self.on_track_delete
+                )
+                self.track_list.append(row)
+                
+                # Update row state
+                if track.temp_file:
+                    row.play_btn.set_sensitive(True)
+            
+            app.next_track_number = project_data.get('next_track_number', len(app.tracks) + 1)
+            self.status_label.set_label("Project loaded")
+            self.update_export_buttons()
+            self.update_title()
+            
+        except Exception as e:
+            self.show_error_dialog(f"Failed to load project: {str(e)}")
+    
+    def on_save_project(self, action, param):
+        app = self.get_application()
+        
+        if app.project_file:
+            self.save_project(app.project_file)
+        else:
+            self.on_save_project_as(action, param)
+    
+    def on_save_project_as(self, action, param):
+        dialog = Gtk.FileDialog.new()
+        dialog.set_title("Save Project As")
+        dialog.set_initial_name("project.atr")
+        
+        dialog.save(self, None, self.on_save_project_response)
+    
+    def on_save_project_response(self, dialog, result):
+        try:
+            file = dialog.save_finish(result)
+            if file:
+                project_path = file.get_path()
+                if not project_path.endswith('.atr'):
+                    project_path += '.atr'
+                self.save_project(project_path)
+        except Exception as e:
+            if "dismissed" not in str(e).lower():
+                self.show_error_dialog(f"Failed to save project: {str(e)}")
+    
+    def save_project(self, project_path):
+        app = self.get_application()
+        
+        try:
+            project_dir = os.path.dirname(project_path)
+            project_name = os.path.splitext(os.path.basename(project_path))[0]
+            audio_dir = os.path.join(project_dir, f"{project_name}_audio")
+            
+            # Create audio directory
+            os.makedirs(audio_dir, exist_ok=True)
+            
+            # Save track data
+            tracks_data = []
+            for i, track in enumerate(app.tracks):
+                if track.temp_file and os.path.exists(track.temp_file):
+                    # Copy audio file to project directory
+                    audio_filename = f"{track.name}.wav"
+                    audio_path = os.path.join(audio_dir, audio_filename)
+                    shutil.copy2(track.temp_file, audio_path)
+                    
+                    tracks_data.append({
+                        'name': track.name,
+                        'audio_file': os.path.join(f"{project_name}_audio", audio_filename)
+                    })
+            
+            # Save project file
+            project_data = {
+                'tracks': tracks_data,
+                'next_track_number': app.next_track_number
+            }
+            
+            with open(project_path, 'w') as f:
+                json.dump(project_data, f, indent=2)
+            
+            app.project_file = project_path
+            self.status_label.set_label(f"Project saved: {os.path.basename(project_path)}")
+            self.update_title()
+            
+        except Exception as e:
+            self.show_error_dialog(f"Failed to save project: {str(e)}")
+    
+    def on_import_audio(self, action, param):
+        dialog = Gtk.FileDialog.new()
+        dialog.set_title("Import Audio File")
+        
+        # Filter for audio files
+        filter_audio = Gtk.FileFilter()
+        filter_audio.set_name("Audio Files (*.wav)")
+        filter_audio.add_pattern("*.wav")
+        
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(filter_audio)
+        dialog.set_filters(filters)
+        
+        dialog.open(self, None, self.on_import_audio_response)
+    
+    def on_import_audio_response(self, dialog, result):
+        try:
+            file = dialog.open_finish(result)
+            if file:
+                self.import_audio_file(file.get_path())
+        except Exception as e:
+            if "dismissed" not in str(e).lower():
+                self.show_error_dialog(f"Failed to import audio: {str(e)}")
+    
+    def import_audio_file(self, audio_path):
+        app = self.get_application()
+        
+        try:
+            # Create new track
+            track_name = os.path.splitext(os.path.basename(audio_path))[0]
+            track = Track(track_name)
+            
+            # Copy to temp file
+            fd, track.temp_file = tempfile.mkstemp(suffix='.wav')
+            os.close(fd)
+            shutil.copy2(audio_path, track.temp_file)
+            
+            app.tracks.append(track)
+            
+            row = TrackRow(
+                track,
+                self.on_track_record,
+                self.on_track_stop,
+                self.on_track_play,
+                self.on_track_delete
+            )
+            self.track_list.append(row)
+            row.play_btn.set_sensitive(True)
+            
+            self.status_label.set_label(f"Imported: {track_name}")
+            self.update_export_buttons()
+            
+        except Exception as e:
+            self.show_error_dialog(f"Failed to import audio: {str(e)}")
+    
+    def update_title(self):
+        app = self.get_application()
+        if app.project_file:
+            project_name = os.path.basename(app.project_file)
+            self.set_title(f"Multi-Track Audio Recorder - {project_name}")
+        else:
+            self.set_title("Multi-Track Audio Recorder")
+    
     def add_track(self):
         app = self.get_application()
         track = Track(f"Track {app.next_track_number}")
@@ -332,7 +607,6 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                 app = self.get_application()
                 folder_path = folder.get_path()
                 
-                import shutil
                 for track in app.tracks:
                     if track.temp_file and os.path.exists(track.temp_file):
                         filename = f"{track.name}.wav"
@@ -376,7 +650,6 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                 folder_path = folder.get_path()
                 
                 # Export individual tracks
-                import shutil
                 for track in app.tracks:
                     if track.temp_file and os.path.exists(track.temp_file):
                         filename = f"{track.name}.wav"

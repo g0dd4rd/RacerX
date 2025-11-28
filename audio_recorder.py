@@ -444,7 +444,16 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         try:
             # Project path is treated as a folder containing everything
             # Structure: project_folder/project.atr + project_folder/audio/
-            project_dir = project_path if os.path.isdir(project_path) else os.path.splitext(project_path)[0]
+            if os.path.isdir(project_path):
+                # Path is already a directory
+                project_dir = project_path
+            elif project_path.endswith('.atr'):
+                # Path is an existing .atr file - use its parent directory
+                project_dir = os.path.dirname(project_path)
+            else:
+                # Path is a new name (from Save As) - use it as directory name
+                project_dir = project_path
+            
             project_name = os.path.basename(project_dir)
             audio_dir = os.path.join(project_dir, "audio")
             project_file = os.path.join(project_dir, f"{project_name}.atr")
@@ -452,6 +461,13 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             # Create project and audio directories
             os.makedirs(project_dir, exist_ok=True)
             os.makedirs(audio_dir, exist_ok=True)
+            
+            # Clean up old audio files from deleted tracks
+            if os.path.exists(audio_dir):
+                for old_file in os.listdir(audio_dir):
+                    old_file_path = os.path.join(audio_dir, old_file)
+                    if os.path.isfile(old_file_path):
+                        os.unlink(old_file_path)
             
             # Save track data
             tracks_data = []

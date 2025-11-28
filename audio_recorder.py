@@ -3,7 +3,8 @@
 import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
-from gi.repository import Gtk, Adw, GLib, Gio
+gi.require_version('Gst', '1.0')
+from gi.repository import Gtk, Adw, GLib, Gio, Gst
 import subprocess
 import os
 import tempfile
@@ -12,6 +13,9 @@ import wave
 import json
 import shutil
 
+# Initialize GStreamer
+Gst.init(None)
+
 class Track:
     def __init__(self, name, temp_file=None):
         self.name = name
@@ -19,7 +23,8 @@ class Track:
         self.recording = False
         self.record_process = None
         self.playing = False
-        self.play_process = None
+        self.paused = False
+        self.pipeline = None  # GStreamer pipeline for playback
 
 class AudioRecorderApp(Adw.Application):
     def __init__(self):
@@ -132,10 +137,13 @@ class TrackRow(Adw.ActionRow):
             if self.track.temp_file and os.path.exists(self.track.temp_file):
                 self.play_btn.set_sensitive(True)
     
-    def set_playing(self, playing):
+    def set_playing(self, playing, paused=False):
         if playing:
             self.play_btn.set_icon_name("media-playback-pause-symbolic")
             self.set_subtitle("Playing…")
+        elif paused:
+            self.play_btn.set_icon_name("media-playback-start-symbolic")
+            self.set_subtitle("Paused")
         else:
             self.play_btn.set_icon_name("media-playback-start-symbolic")
             self.set_subtitle("Ready")
@@ -706,24 +714,38 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         track = row.track
         
         if track.playing:
-            # Stop this track's playback
-            if track.play_process:
-                track.play_process.terminate()
-                track.play_process.wait()
-                track.play_process = None
+            # Pause this track's playback
+            if track.pipeline:
+                track.pipeline.set_state(Gst.State.PAUSED)
             track.playing = False
-            row.set_playing(False)
+            track.paused = True
+            row.set_playing(False, paused=True)
             self.playing_tracks.discard(row)
+        elif track.paused:
+            # Resume from paused state
+            if track.pipeline:
+                track.pipeline.set_state(Gst.State.PLAYING)
+            track.playing = True
+            track.paused = False
+            row.set_playing(True)
+            self.playing_tracks.add(row)
+            
+            # Restart monitoring if needed
+            if len(self.playing_tracks) == 1:
+                GLib.timeout_add(100, self.check_playback_finished)
         else:
-            # Start playback for this track
+            # Start new playback for this track
             if track.temp_file and os.path.exists(track.temp_file):
                 try:
-                    track.play_process = subprocess.Popen([
-                        'pw-play',
-                        track.temp_file
-                    ])
+                    # Create GStreamer pipeline
+                    track.pipeline = Gst.ElementFactory.make("playbin", f"playbin-{track.name}")
+                    track.pipeline.set_property("uri", f"file://{track.temp_file}")
+                    
+                    # Start playback
+                    track.pipeline.set_state(Gst.State.PLAYING)
                     
                     track.playing = True
+                    track.paused = False
                     row.set_playing(True)
                     self.playing_tracks.add(row)
                     
@@ -739,17 +761,32 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
     def check_playback_finished(self):
         # Check all playing tracks for completion
         finished_tracks = []
-        for row in self.playing_tracks:
+        for row in list(self.playing_tracks):
             track = row.track
-            if track.play_process and track.play_process.poll() is not None:
-                # This track's playback finished
-                track.play_process = None
-                track.playing = False
-                row.set_playing(False)
-                finished_tracks.append(row)
+            if track.pipeline:
+                # Check if playback has reached end of stream
+                _, state, _ = track.pipeline.get_state(0)
+                if state == Gst.State.NULL:
+                    finished_tracks.append(row)
+                else:
+                    # Also check for end-of-stream message
+                    bus = track.pipeline.get_bus()
+                    msg = bus.pop_filtered(Gst.MessageType.EOS | Gst.MessageType.ERROR)
+                    if msg:
+                        if msg.type == Gst.MessageType.EOS:
+                            finished_tracks.append(row)
+                        elif msg.type == Gst.MessageType.ERROR:
+                            finished_tracks.append(row)
         
-        # Remove finished tracks from the set
+        # Clean up finished tracks
         for row in finished_tracks:
+            track = row.track
+            if track.pipeline:
+                track.pipeline.set_state(Gst.State.NULL)
+                track.pipeline = None
+            track.playing = False
+            track.paused = False
+            row.set_playing(False)
             self.playing_tracks.discard(row)
         
         # Update global playback buttons
@@ -759,25 +796,53 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         return len(self.playing_tracks) > 0
     
     def on_play_all(self, button):
-        """Start playing all tracks that have recordings"""
+        """Toggle playback of all tracks - play if stopped, pause if playing"""
         app = self.get_application()
         
-        # Get all track rows
+        # If any tracks are playing, pause them all
+        if len(self.playing_tracks) > 0:
+            self.pause_all_playback()
+            return
+        
+        # Check if any tracks are paused - if so, resume them
+        has_paused = False
+        row = self.track_list.get_first_child()
+        while row:
+            if isinstance(row, TrackRow) and row.track.paused:
+                has_paused = True
+                break
+            row = row.get_next_sibling()
+        
+        if has_paused:
+            self.resume_all_playback()
+        else:
+            self.start_all_playback()
+    
+    def start_all_playback(self):
+        """Start playing all tracks with recordings from the beginning"""
         row = self.track_list.get_first_child()
         started_any = False
         
         while row:
             if isinstance(row, TrackRow):
                 track = row.track
-                # Only play tracks that have recordings and aren't already playing
+                # Only play tracks that have recordings
                 if track.temp_file and os.path.exists(track.temp_file) and not track.playing:
                     try:
-                        track.play_process = subprocess.Popen([
-                            'pw-play',
-                            track.temp_file
-                        ])
+                        # Clean up any existing pipeline
+                        if track.pipeline:
+                            track.pipeline.set_state(Gst.State.NULL)
+                            track.pipeline = None
+                        
+                        # Create GStreamer pipeline
+                        track.pipeline = Gst.ElementFactory.make("playbin", f"playbin-{track.name}")
+                        track.pipeline.set_property("uri", f"file://{track.temp_file}")
+                        
+                        # Start playback
+                        track.pipeline.set_state(Gst.State.PLAYING)
                         
                         track.playing = True
+                        track.paused = False
                         row.set_playing(True)
                         self.playing_tracks.add(row)
                         started_any = True
@@ -793,19 +858,73 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         
         self.update_global_playback_buttons()
     
-    def on_stop_all(self, button):
-        """Stop all currently playing tracks"""
-        # Make a copy since we'll be modifying the set
+    def pause_all_playback(self):
+        """Pause all currently playing tracks"""
         for row in list(self.playing_tracks):
             track = row.track
-            if track.playing and track.play_process:
-                track.play_process.terminate()
-                track.play_process.wait()
-                track.play_process = None
+            if track.playing and track.pipeline:
+                track.pipeline.set_state(Gst.State.PAUSED)
+                track.playing = False
+                track.paused = True
+                row.set_playing(False, paused=True)
+        
+        self.playing_tracks.clear()
+        self.update_global_playback_buttons()
+    
+    def resume_all_playback(self):
+        """Resume all paused tracks"""
+        row = self.track_list.get_first_child()
+        resumed_any = False
+        
+        while row:
+            if isinstance(row, TrackRow):
+                track = row.track
+                if track.paused and track.pipeline:
+                    track.pipeline.set_state(Gst.State.PLAYING)
+                    track.playing = True
+                    track.paused = False
+                    row.set_playing(True)
+                    self.playing_tracks.add(row)
+                    resumed_any = True
+            
+            row = row.get_next_sibling()
+        
+        # Start monitoring if we resumed any tracks
+        if resumed_any and len(self.playing_tracks) == resumed_any:
+            GLib.timeout_add(100, self.check_playback_finished)
+        
+        self.update_global_playback_buttons()
+    
+    def on_stop_all(self, button):
+        """Stop all currently playing tracks"""
+        self.stop_all_playback()
+    
+    def stop_all_playback(self):
+        """Stop all playback and reset to beginning"""
+        # Stop playing tracks
+        for row in list(self.playing_tracks):
+            track = row.track
+            if track.pipeline:
+                track.pipeline.set_state(Gst.State.NULL)
+                track.pipeline = None
             track.playing = False
+            track.paused = False
             row.set_playing(False)
         
         self.playing_tracks.clear()
+        
+        # Also stop any paused tracks
+        row = self.track_list.get_first_child()
+        while row:
+            if isinstance(row, TrackRow):
+                track = row.track
+                if track.paused and track.pipeline:
+                    track.pipeline.set_state(Gst.State.NULL)
+                    track.pipeline = None
+                    track.paused = False
+                    row.set_playing(False)
+            row = row.get_next_sibling()
+        
         self.update_global_playback_buttons()
     
     def update_global_playback_buttons(self):
@@ -818,11 +937,25 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         # Check if any tracks are currently playing
         any_playing = len(self.playing_tracks) > 0
         
-        # Play button enabled if there are recordings and not all are playing
-        self.play_all_btn.set_sensitive(has_recordings and not any_playing)
+        # Check if any tracks are paused
+        any_paused = any(t.paused for t in app.tracks)
         
-        # Stop button enabled if any tracks are playing
-        self.stop_all_btn.set_sensitive(any_playing)
+        # Update play button icon based on state
+        if any_playing:
+            self.play_all_btn.set_icon_name("media-playback-pause-symbolic")
+            self.play_all_btn.set_tooltip_text("Pause all tracks")
+        else:
+            self.play_all_btn.set_icon_name("media-playback-start-symbolic")
+            if any_paused:
+                self.play_all_btn.set_tooltip_text("Resume all tracks")
+            else:
+                self.play_all_btn.set_tooltip_text("Play all tracks")
+        
+        # Play button enabled if there are recordings or paused tracks
+        self.play_all_btn.set_sensitive(has_recordings or any_paused)
+        
+        # Stop button enabled if any tracks are playing or paused
+        self.stop_all_btn.set_sensitive(any_playing or any_paused)
     
     def on_track_delete(self, row):
         app = self.get_application()
@@ -833,13 +966,13 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             track.record_process.terminate()
             track.record_process.wait()
         
-        # Stop if playing
-        if track.playing and track.play_process:
-            track.play_process.terminate()
-            track.play_process.wait()
-            track.play_process = None
-            track.playing = False
-            self.playing_tracks.discard(row)
+        # Stop if playing or paused (clean up GStreamer pipeline)
+        if track.pipeline:
+            track.pipeline.set_state(Gst.State.NULL)
+            track.pipeline = None
+        track.playing = False
+        track.paused = False
+        self.playing_tracks.discard(row)
         
         # Remove temp file
         if track.temp_file and os.path.exists(track.temp_file):

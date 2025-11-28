@@ -102,6 +102,7 @@ class AudioRecorderApp(Adw.Application):
         self.set_accels_for_action("win.toggle_monitoring", ["<Control>l"])
         
         # Help
+        self.set_accels_for_action("win.show_help", ["F1"])
         self.set_accels_for_action("win.show_shortcuts", ["<Control>question"])
 
 class TrackRow(Adw.ActionRow):
@@ -288,6 +289,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         
         # Help section
         help_section = Gio.Menu()
+        help_section.append("Help", "win.show_help")
         help_section.append("Keyboard Shortcuts", "win.show_shortcuts")
         help_section.append("About Audio Recorder", "win.about")
         menu.append_section(None, help_section)
@@ -424,6 +426,11 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         # Show Keyboard Shortcuts
         action = Gio.SimpleAction.new("show_shortcuts", None)
         action.connect("activate", self.on_show_shortcuts)
+        self.add_action(action)
+        
+        # Show Help
+        action = Gio.SimpleAction.new("show_help", None)
+        action.connect("activate", self.on_show_help)
         self.add_action(action)
         
         # About
@@ -1403,13 +1410,37 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         help_group = Gtk.ShortcutsGroup(title="Help")
         help_group.set_visible(True)
         
-        shortcut = Gtk.ShortcutsShortcut(title="Keyboard Shortcuts", accelerator="<Control>question")
-        shortcut.set_visible(True)
-        help_group.append(shortcut)
+        shortcuts = [
+            ("Help", "F1"),
+            ("Keyboard Shortcuts", "<Control>question"),
+        ]
+        for title, accel in shortcuts:
+            shortcut = Gtk.ShortcutsShortcut(title=title, accelerator=accel)
+            shortcut.set_visible(True)
+            help_group.append(shortcut)
         section.append(help_group)
         
         shortcuts_window.add_section(section)
         shortcuts_window.present()
+    
+    def on_show_help(self, action, param):
+        """Open the help documentation in Yelp"""
+        # Get the path to the help directory relative to this script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        help_dir = os.path.join(script_dir, "help", "C")
+        
+        if os.path.exists(help_dir):
+            # Open with Yelp
+            try:
+                help_uri = f"help:{script_dir}/help/C/index"
+                # Try ghelp: URI first (works with local help files)
+                subprocess.Popen(["yelp", os.path.join(help_dir, "index.page")])
+            except FileNotFoundError:
+                self.show_error_dialog("Yelp is not installed. Please install yelp to view help.")
+            except Exception as e:
+                self.show_error_dialog(f"Could not open help: {str(e)}")
+        else:
+            self.show_error_dialog("Help files not found. Please ensure the help/C/ directory exists.")
     
     def on_about(self, action, param):
         """Show the About dialog"""

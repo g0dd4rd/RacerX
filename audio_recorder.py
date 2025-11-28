@@ -202,6 +202,9 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         # Add first track by default
         self.add_track()
         
+        # Connect close request to handle unsaved changes
+        self.connect("close-request", self.on_close_request)
+        
     def create_actions(self):
         # New Project
         action = Gio.SimpleAction.new("new_project", None)
@@ -852,6 +855,65 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         dialog = Adw.AlertDialog(heading="Error", body=message)
         dialog.add_response("ok", "OK")
         dialog.present(self)
+    
+    def on_close_request(self, window):
+        """Handle window close request - check for unsaved changes"""
+        if self.has_unsaved_changes():
+            self.show_close_confirmation_dialog()
+            return True  # Prevent window from closing
+        return False  # Allow window to close
+    
+    def show_close_confirmation_dialog(self):
+        """Show dialog asking if user wants to save before closing"""
+        dialog = Adw.AlertDialog(
+            heading="Save current project?",
+            body="You have unsaved work. Do you want to save it before closing?"
+        )
+        
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("discard", "Don't Save")
+        dialog.add_response("save", "Save")
+        
+        dialog.set_response_appearance("discard", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_response_appearance("save", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("save")
+        dialog.set_close_response("cancel")
+        
+        dialog.connect("response", self.on_close_confirmation_response)
+        dialog.present(self)
+    
+    def on_close_confirmation_response(self, dialog, response):
+        if response == "save":
+            # Save first, then close
+            app = self.get_application()
+            if app.project_file:
+                self.save_project(app.project_file)
+                self.destroy()
+            else:
+                # Need to save as - show save dialog
+                self.pending_close = True
+                save_dialog = Gtk.FileDialog.new()
+                save_dialog.set_title("Save Project As")
+                save_dialog.set_initial_name("project")
+                save_dialog.save(self, None, self.on_save_before_close_response)
+        elif response == "discard":
+            # Close without saving
+            self.destroy()
+        # If "cancel", do nothing - window stays open
+    
+    def on_save_before_close_response(self, dialog, result):
+        try:
+            file = dialog.save_finish(result)
+            if file:
+                project_path = file.get_path()
+                self.save_project(project_path)
+                self.destroy()
+        except Exception as e:
+            if "dismissed" not in str(e).lower():
+                self.show_error_dialog(f"Failed to save project: {str(e)}")
+        finally:
+            if hasattr(self, 'pending_close'):
+                delattr(self, 'pending_close')
 
 def main():
     app = AudioRecorderApp()

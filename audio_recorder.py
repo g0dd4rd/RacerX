@@ -24,6 +24,7 @@ class Track:
         self.record_process = None
         self.playing = False
         self.paused = False
+        self.muted = False
         self.pipeline = None  # GStreamer pipeline for playback
 
 class AudioRecorderApp(Adw.Application):
@@ -76,7 +77,7 @@ class AudioRecorderApp(Adw.Application):
         win.present()
 
 class TrackRow(Adw.ActionRow):
-    def __init__(self, track, on_record, on_stop, on_play, on_delete):
+    def __init__(self, track, on_record, on_stop, on_play, on_mute, on_delete):
         super().__init__()
         self.track = track
         
@@ -113,6 +114,14 @@ class TrackRow(Adw.ActionRow):
         self.play_btn.connect("clicked", lambda b: on_play(self))
         button_box.append(self.play_btn)
         
+        # Mute button
+        self.mute_btn = Gtk.ToggleButton()
+        self.mute_btn.set_icon_name("audio-volume-high-symbolic")
+        self.mute_btn.set_tooltip_text("Mute track")
+        self.mute_btn.add_css_class("circular")
+        self.mute_btn.connect("toggled", lambda b: on_mute(self))
+        button_box.append(self.mute_btn)
+        
         # Delete button
         delete_btn = Gtk.Button()
         delete_btn.set_icon_name("edit-delete-symbolic")
@@ -140,13 +149,27 @@ class TrackRow(Adw.ActionRow):
     def set_playing(self, playing, paused=False):
         if playing:
             self.play_btn.set_icon_name("media-playback-pause-symbolic")
-            self.set_subtitle("Playing…")
+            self.set_subtitle("Playing…" if not self.track.muted else "Playing (muted)…")
         elif paused:
             self.play_btn.set_icon_name("media-playback-start-symbolic")
-            self.set_subtitle("Paused")
+            self.set_subtitle("Paused" if not self.track.muted else "Paused (muted)")
         else:
             self.play_btn.set_icon_name("media-playback-start-symbolic")
             self.set_subtitle("Ready")
+    
+    def set_muted(self, muted):
+        if muted:
+            self.mute_btn.set_icon_name("audio-volume-muted-symbolic")
+            self.mute_btn.set_tooltip_text("Unmute track")
+        else:
+            self.mute_btn.set_icon_name("audio-volume-high-symbolic")
+            self.mute_btn.set_tooltip_text("Mute track")
+        
+        # Update subtitle if playing or paused
+        if self.track.playing:
+            self.set_subtitle("Playing (muted)…" if muted else "Playing…")
+        elif self.track.paused:
+            self.set_subtitle("Paused (muted)" if muted else "Paused")
 
 class AudioRecorderWindow(Adw.ApplicationWindow):
     def __init__(self, *args, **kwargs):
@@ -478,6 +501,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                     self.on_track_record,
                     self.on_track_stop,
                     self.on_track_play,
+                    self.on_track_mute,
                     self.on_track_delete
                 )
                 self.track_list.append(row)
@@ -628,6 +652,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                 self.on_track_record,
                 self.on_track_stop,
                 self.on_track_play,
+                self.on_track_mute,
                 self.on_track_delete
             )
             self.track_list.append(row)
@@ -659,6 +684,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             self.on_track_record,
             self.on_track_stop,
             self.on_track_play,
+            self.on_track_mute,
             self.on_track_delete
         )
         self.track_list.append(row)
@@ -741,6 +767,10 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                     track.pipeline = Gst.ElementFactory.make("playbin", f"playbin-{track.name}")
                     track.pipeline.set_property("uri", f"file://{track.temp_file}")
                     
+                    # Apply mute state
+                    if track.muted:
+                        track.pipeline.set_property("volume", 0.0)
+                    
                     # Start playback
                     track.pipeline.set_state(Gst.State.PLAYING)
                     
@@ -757,6 +787,18 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                     self.show_error_dialog(f"Failed to play track: {str(e)}")
         
         self.update_global_playback_buttons()
+    
+    def on_track_mute(self, row):
+        """Toggle mute state for a track"""
+        track = row.track
+        track.muted = row.mute_btn.get_active()
+        
+        # Update the pipeline volume if it exists
+        if track.pipeline:
+            track.pipeline.set_property("volume", 0.0 if track.muted else 1.0)
+        
+        # Update row visual state
+        row.set_muted(track.muted)
     
     def check_playback_finished(self):
         # Check all playing tracks for completion
@@ -837,6 +879,10 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                         # Create GStreamer pipeline
                         track.pipeline = Gst.ElementFactory.make("playbin", f"playbin-{track.name}")
                         track.pipeline.set_property("uri", f"file://{track.temp_file}")
+                        
+                        # Apply mute state
+                        if track.muted:
+                            track.pipeline.set_property("volume", 0.0)
                         
                         # Start playback
                         track.pipeline.set_state(Gst.State.PLAYING)

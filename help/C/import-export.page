@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<page xmlns="http://projectmallard.org/1.0/"
+      xmlns:its="http://www.w3.org/2005/11/its"
+      type="topic"
+      id="import-export">
+
+  <info>
+    <link type="guide" xref="index#advanced"/>
+    <credit type="author">
+      <name>Audio Recorder Team</name>
+    </credit>
+    <license>
+      <p>Creative Commons Share Alike 4.0</p>
+    </license>
+    <desc>Import and export audio files</desc>
+  </info>
+
+  <title>Importing and Exporting</title>
+
+  <section id="import">
+    <title>Importing Audio</title>
+    <p>You can import existing audio files as new tracks:</p>
+    <steps>
+      <item><p>Select <guiseq><gui>Menu</gui><gui>Import Audio…</gui></guiseq> or press 
+      <keyseq><key>Ctrl</key><key>I</key></keyseq>.</p></item>
+      <item><p>Select a WAV file from your computer.</p></item>
+      <item><p>A new track is created with the imported audio.</p></item>
+    </steps>
+    <note>
+      <p>Currently, only WAV files can be imported.</p>
+    </note>
+  </section>
+
+  <section id="export-tracks">
+    <title>Export Individual Tracks</title>
+    <p>Export each track as a separate file:</p>
+    <steps>
+      <item><p>Select <guiseq><gui>Menu</gui><gui>Export Tracks…</gui></guiseq> or press 
+      <keyseq><key>Ctrl</key><key>Shift</key><key>T</key></keyseq>.</p></item>
+      <item><p>Choose a destination folder.</p></item>
+      <item><p>Each track is saved as a WAV file named after the track.</p></item>
+    </steps>
+  </section>
+
+  <section id="export-mixed">
+    <title>Export Mixed</title>
+    <p>Combine all tracks into a single audio file:</p>
+    <steps>
+      <item><p>Select <guiseq><gui>Menu</gui><gui>Export Mixed…</gui></guiseq> or press 
+      <keyseq><key>Ctrl</key><key>Shift</key><key>X</key></keyseq>.</p></item>
+      <item><p>Choose a filename and location.</p></item>
+      <item><p>All tracks are mixed together and saved as one WAV file.</p></item>
+    </steps>
+    <note style="tip">
+      <p>The mixed export combines all tracks. Muted tracks are still included 
+      in the mix. To exclude a track from the mix, delete it first or export 
+      tracks individually.</p>
+    </note>
+  </section>
+
+  <section id="export-all">
+    <title>Export All</title>
+    <p>Export both individual tracks and a mixed version:</p>
+    <steps>
+      <item><p>Select <guiseq><gui>Menu</gui><gui>Export All…</gui></guiseq> or press 
+      <keyseq><key>Ctrl</key><key>Shift</key><key>A</key></keyseq>.</p></item>
+      <item><p>Choose a destination folder.</p></item>
+      <item><p>The folder will contain individual WAV files for each track, 
+      plus a <file>mixed.wav</file> file with all tracks combined.</p></item>
+    </steps>
+  </section>
+
+</page>
+

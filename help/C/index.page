@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<page xmlns="http://projectmallard.org/1.0/"
+      xmlns:its="http://www.w3.org/2005/11/its"
+      type="guide"
+      id="index">
+
+  <info>
+    <title type="link">Audio Recorder Help</title>
+    <title type="text">Audio Recorder</title>
+    <credit type="author">
+      <name>Audio Recorder Team</name>
+    </credit>
+    <license>
+      <p>Creative Commons Share Alike 4.0</p>
+    </license>
+  </info>
+
+  <title>
+    <media type="image" src="figures/audio-input-microphone-symbolic.svg" width="48px" height="48px"/>
+    Audio Recorder
+  </title>
+
+  <p>A simple multi-track audio recorder for GNOME.</p>
+
+  <p><app>Audio Recorder</app> allows you to record multiple audio tracks, 
+  play them back simultaneously, and export your recordings in various formats.</p>
+
+  <section id="getting-started" style="2column">
+    <title>Getting Started</title>
+    <links type="topic" groups="first second" style="2column"/>
+  </section>
+
+  <section id="working" style="2column">
+    <title>Working with Audio</title>
+  </section>
+
+  <section id="advanced" style="2column">
+    <title>Advanced Features</title>
+  </section>
+
+  <section id="reference" style="2column">
+    <title>Reference</title>
+  </section>
+
+</page>
+

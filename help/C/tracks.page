@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<page xmlns="http://projectmallard.org/1.0/"
+      xmlns:its="http://www.w3.org/2005/11/its"
+      type="topic"
+      id="tracks">
+
+  <info>
+    <link type="guide" xref="index#working"/>
+    <credit type="author">
+      <name>Audio Recorder Team</name>
+    </credit>
+    <license>
+      <p>Creative Commons Share Alike 4.0</p>
+    </license>
+    <desc>Add, rename, and manage audio tracks</desc>
+  </info>
+
+  <title>Working with Tracks</title>
+
+  <p>Tracks are the building blocks of your project. Each track contains 
+  a single audio recording.</p>
+
+  <section id="add-track">
+    <title>Adding a Track</title>
+    <p>To add a new track:</p>
+    <list>
+      <item><p>Click the <gui style="button">+</gui> button in the header bar, or</p></item>
+      <item><p>Press <keyseq><key>Ctrl</key><key>T</key></keyseq></p></item>
+    </list>
+    <p>New tracks are automatically named "Track 1", "Track 2", and so on.</p>
+  </section>
+
+  <section id="rename-track">
+    <title>Renaming a Track</title>
+    <steps>
+      <item><p>Click the <gui style="button">✏️</gui> (edit) button on the left side of the track.</p></item>
+      <item><p>Enter the new name in the dialog.</p></item>
+      <item><p>Click <gui style="button">Rename</gui> or press <key>Enter</key>.</p></item>
+    </steps>
+    <note style="tip">
+      <p>Give tracks descriptive names like "Vocals", "Guitar", or "Interview" 
+      to keep your project organized.</p>
+    </note>
+  </section>
+
+  <section id="delete-track">
+    <title>Deleting a Track</title>
+    <p>To delete a track, click the <gui style="button">🗑️</gui> (delete) button 
+    on the right side of the track.</p>
+    <note style="warning">
+      <p>Deleting a track permanently removes its recording. This action cannot be undone.</p>
+    </note>
+  </section>
+
+  <section id="mute-track">
+    <title>Muting a Track</title>
+    <p>Muting allows you to silence a track during playback while keeping it in the project:</p>
+    <list>
+      <item><p>Click the <gui style="button">🔊</gui> (speaker) button to mute the track.</p></item>
+      <item><p>The icon changes to <gui style="button">🔇</gui> when muted.</p></item>
+      <item><p>Click again to unmute.</p></item>
+    </list>
+    <p>Muted tracks still "play" (their position advances), but produce no audio output. 
+    This is useful for isolating certain tracks while reviewing your mix.</p>
+  </section>
+
+</page>
+

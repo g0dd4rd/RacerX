@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<page xmlns="http://projectmallard.org/1.0/"
+      xmlns:its="http://www.w3.org/2005/11/its"
+      type="topic"
+      id="recording">
+
+  <info>
+    <link type="guide" xref="index#working"/>
+    <credit type="author">
+      <name>Audio Recorder Team</name>
+    </credit>
+    <license>
+      <p>Creative Commons Share Alike 4.0</p>
+    </license>
+    <desc>Record audio on tracks</desc>
+  </info>
+
+  <title>Recording Audio</title>
+
+  <p>Learn how to record audio onto your tracks.</p>
+
+  <section id="basic-recording">
+    <title>Recording on a Track</title>
+    <steps>
+      <item><p>Make sure you have a track to record on. Add one with 
+      <keyseq><key>Ctrl</key><key>T</key></keyseq> if needed.</p></item>
+      <item><p>Click the <gui style="button">🔴</gui> (record) button on the track.</p></item>
+      <item><p>The track status changes to "Recording…" with a red highlight.</p></item>
+      <item><p>Speak or play your audio.</p></item>
+      <item><p>Click the <gui style="button">⏹</gui> (stop) button to finish.</p></item>
+    </steps>
+  </section>
+
+  <section id="recording-tips">
+    <title>Recording Tips</title>
+    <list>
+      <item>
+        <p><em style="strong">Check your input:</em> Use input monitoring 
+        (<keyseq><key>Ctrl</key><key>L</key></keyseq>) to hear your microphone 
+        before recording.</p>
+      </item>
+      <item>
+        <p><em style="strong">One track at a time:</em> Only one track can 
+        record at a time.</p>
+      </item>
+      <item>
+        <p><em style="strong">Recordings replace:</em> Recording on a track 
+        that already has audio will replace the previous recording.</p>
+      </item>
+      <item>
+        <p><em style="strong">Audio format:</em> All recordings are saved 
+        as WAV files for maximum quality.</p>
+      </item>
+    </list>
+  </section>
+
+  <section id="monitoring">
+    <title>Input Monitoring</title>
+    <p>Input monitoring lets you hear your microphone in real-time:</p>
+    <list>
+      <item><p>Click the <gui style="button">🔊</gui> button in the header bar, or</p></item>
+      <item><p>Press <keyseq><key>Ctrl</key><key>L</key></keyseq></p></item>
+    </list>
+    <p>This is useful for:</p>
+    <list>
+      <item><p>Checking microphone levels before recording</p></item>
+      <item><p>Monitoring your voice while recording</p></item>
+      <item><p>Testing audio input settings</p></item>
+    </list>
+    <note style="tip">
+      <p>Monitoring uses PipeWire's low-latency audio path for minimal delay.</p>
+    </note>
+  </section>
+
+</page>
+

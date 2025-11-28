@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<page xmlns="http://projectmallard.org/1.0/"
+      xmlns:its="http://www.w3.org/2005/11/its"
+      type="topic"
+      id="projects">
+
+  <info>
+    <link type="guide" xref="index#working"/>
+    <credit type="author">
+      <name>Audio Recorder Team</name>
+    </credit>
+    <license>
+      <p>Creative Commons Share Alike 4.0</p>
+    </license>
+    <desc>Create, open, and save projects</desc>
+  </info>
+
+  <title>Working with Projects</title>
+
+  <p>Projects store all your tracks and recordings together in a single folder.</p>
+
+  <section id="new-project">
+    <title>Creating a New Project</title>
+    <steps>
+      <item><p>Select <guiseq><gui>Menu</gui><gui>New Project</gui></guiseq> or press 
+      <keyseq><key>Ctrl</key><key>N</key></keyseq>.</p></item>
+      <item><p>If you have unsaved changes, you'll be asked to save them first.</p></item>
+      <item><p>A new project with one empty track is created.</p></item>
+    </steps>
+  </section>
+
+  <section id="open-project">
+    <title>Opening a Project</title>
+    <steps>
+      <item><p>Select <guiseq><gui>Menu</gui><gui>Open Project…</gui></guiseq> or press 
+      <keyseq><key>Ctrl</key><key>O</key></keyseq>.</p></item>
+      <item><p>Navigate to your project folder and select the <file>.atr</file> file.</p></item>
+      <item><p>All tracks and recordings are loaded.</p></item>
+    </steps>
+    <note style="tip">
+      <p>The application automatically opens your most recent project when launched.</p>
+    </note>
+  </section>
+
+  <section id="save-project">
+    <title>Saving a Project</title>
+    
+    <p><gui style="button">Save Project</gui> (<keyseq><key>Ctrl</key><key>S</key></keyseq>):</p>
+    <list>
+      <item><p>Saves to the existing location if the project was previously saved.</p></item>
+      <item><p>Prompts for a location if it's a new project.</p></item>
+    </list>
+
+    <p><gui style="button">Save Project As…</gui> (<keyseq><key>Ctrl</key><key>Shift</key><key>S</key></keyseq>):</p>
+    <list>
+      <item><p>Always prompts for a new location.</p></item>
+      <item><p>Creates a copy of the project in the new location.</p></item>
+    </list>
+  </section>
+
+  <section id="project-structure">
+    <title>Project File Structure</title>
+    <p>Each project is stored in a folder containing:</p>
+    <list>
+      <item><p><file>projectname.atr</file> — Project metadata file (JSON format)</p></item>
+      <item><p><file>audio/</file> — Folder containing all track recordings as WAV files</p></item>
+    </list>
+    <note style="warning">
+      <p>Keep the <file>.atr</file> file and <file>audio/</file> folder together. 
+      Moving or deleting audio files will break the project.</p>
+    </note>
+  </section>
+
+  <section id="unsaved-changes">
+    <title>Unsaved Changes</title>
+    <p>When closing the application or starting a new project with unsaved changes, 
+    you'll be prompted to:</p>
+    <list>
+      <item><p><gui style="button">Save</gui> — Save the current project first</p></item>
+      <item><p><gui style="button">Don't Save</gui> — Discard changes</p></item>
+      <item><p><gui style="button">Cancel</gui> — Return to the application</p></item>
+    </list>
+  </section>
+
+</page>
+

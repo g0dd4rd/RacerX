@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<page xmlns="http://projectmallard.org/1.0/"
+      xmlns:its="http://www.w3.org/2005/11/its"
+      type="topic"
+      id="playback">
+
+  <info>
+    <link type="guide" xref="index#working"/>
+    <credit type="author">
+      <name>Audio Recorder Team</name>
+    </credit>
+    <license>
+      <p>Creative Commons Share Alike 4.0</p>
+    </license>
+    <desc>Play back your recordings</desc>
+  </info>
+
+  <title>Playback Controls</title>
+
+  <p>Learn how to play back your recordings individually or all together.</p>
+
+  <section id="individual-playback">
+    <title>Playing Individual Tracks</title>
+    <list>
+      <item><p>Click the <gui style="button">▶</gui> (play) button on a track to start playing.</p></item>
+      <item><p>The button changes to <gui style="button">⏸</gui> (pause) while playing.</p></item>
+      <item><p>Click again to pause playback.</p></item>
+      <item><p>Click again to resume from where you paused.</p></item>
+    </list>
+    <p>When playback reaches the end of the track, it automatically stops 
+    and resets to the beginning.</p>
+  </section>
+
+  <section id="global-playback">
+    <title>Playing All Tracks</title>
+    <p>Global playback controls are in the header bar:</p>
+    
+    <terms>
+      <item>
+        <title><gui style="button">▶ Play All</gui> (<keyseq><key>Ctrl</key><key>Space</key></keyseq>)</title>
+        <p>Starts all tracks with recordings simultaneously. All tracks play 
+        in sync, allowing you to hear how they sound together.</p>
+      </item>
+      <item>
+        <title><gui style="button">⏸ Pause All</gui> (<keyseq><key>Ctrl</key><key>Space</key></keyseq>)</title>
+        <p>When tracks are playing, the button changes to pause. Click to 
+        pause all tracks, preserving their positions.</p>
+      </item>
+      <item>
+        <title><gui style="button">⏹ Stop All</gui> (<keyseq><key>Ctrl</key><key>.</key></keyseq>)</title>
+        <p>Stops all playback immediately and resets all tracks to the beginning.</p>
+      </item>
+    </terms>
+  </section>
+
+  <section id="pause-resume">
+    <title>Pause and Resume</title>
+    <p><app>Audio Recorder</app> supports true pause/resume functionality:</p>
+    <list>
+      <item><p>When you pause a track, its position is preserved.</p></item>
+      <item><p>Resuming continues from exactly where you paused.</p></item>
+      <item><p>Use <gui style="button">Stop All</gui> to reset all tracks to the beginning.</p></item>
+    </list>
+  </section>
+
+  <section id="mixing-preview">
+    <title>Previewing Your Mix</title>
+    <p>To hear how your tracks sound together:</p>
+    <steps>
+      <item><p>Mute any tracks you want to exclude by clicking their 
+      <gui style="button">🔊</gui> buttons.</p></item>
+      <item><p>Press <keyseq><key>Ctrl</key><key>Space</key></keyseq> to play all tracks.</p></item>
+      <item><p>Adjust which tracks are muted to find the right balance.</p></item>
+    </steps>
+  </section>
+
+</page>
+

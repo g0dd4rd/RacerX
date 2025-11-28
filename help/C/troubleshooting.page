@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<page xmlns="http://projectmallard.org/1.0/"
+      xmlns:its="http://www.w3.org/2005/11/its"
+      type="topic"
+      id="troubleshooting">
+
+  <info>
+    <link type="guide" xref="index#reference"/>
+    <credit type="author">
+      <name>Audio Recorder Team</name>
+    </credit>
+    <license>
+      <p>Creative Commons Share Alike 4.0</p>
+    </license>
+    <desc>Solve common problems</desc>
+  </info>
+
+  <title>Troubleshooting</title>
+
+  <section id="no-recording">
+    <title>No Audio Recording</title>
+    <p><em style="strong">Problem:</em> Recording doesn't capture any audio.</p>
+    <p><em style="strong">Solutions:</em></p>
+    <list>
+      <item><p>Check that PipeWire is running:</p>
+        <screen>systemctl --user status pipewire</screen>
+      </item>
+      <item><p>Verify that <cmd>pw-record</cmd> is installed:</p>
+        <screen>which pw-record</screen>
+      </item>
+      <item><p>Check that your microphone is selected in the system sound settings.</p></item>
+      <item><p>Test recording directly with PipeWire:</p>
+        <screen>pw-record test.wav</screen>
+      </item>
+    </list>
+  </section>
+
+  <section id="no-playback">
+    <title>No Audio Playback</title>
+    <p><em style="strong">Problem:</em> Tracks don't play or no sound is heard.</p>
+    <p><em style="strong">Solutions:</em></p>
+    <list>
+      <item><p>Check that system volume isn't muted.</p></item>
+      <item><p>Verify the track isn't muted (look for the 🔇 icon).</p></item>
+      <item><p>Check that GStreamer is installed:</p>
+        <screen>gst-launch-1.0 --version</screen>
+      </item>
+      <item><p>Ensure your speakers or headphones are selected in system settings.</p></item>
+    </list>
+  </section>
+
+  <section id="pipewire-not-found">
+    <title>"PipeWire tools not found" Error</title>
+    <p><em style="strong">Solution:</em> Install PipeWire utilities:</p>
+    <list>
+      <item><p><em style="strong">Fedora:</em></p>
+        <screen>sudo dnf install pipewire-utils</screen>
+      </item>
+      <item><p><em style="strong">Ubuntu/Debian:</em></p>
+        <screen>sudo apt install pipewire</screen>
+      </item>
+      <item><p><em style="strong">Arch Linux:</em></p>
+        <screen>sudo pacman -S pipewire</screen>
+      </item>
+    </list>
+  </section>
+
+  <section id="monitoring-delay">
+    <title>Monitoring Has Delay</title>
+    <p><em style="strong">Problem:</em> Input monitoring has noticeable latency or echo.</p>
+    <p><em style="strong">Solutions:</em></p>
+    <list>
+      <item><p>Some delay is normal for software monitoring.</p></item>
+      <item><p>The application uses PipeWire's low-latency settings to minimize delay.</p></item>
+      <item><p>For zero-latency monitoring, use hardware monitoring if your audio 
+      interface supports it.</p></item>
+    </list>
+  </section>
+
+  <section id="project-wont-open">
+    <title>Project Won't Open</title>
+    <p><em style="strong">Problem:</em> Error when opening a project file.</p>
+    <p><em style="strong">Solutions:</em></p>
+    <list>
+      <item><p>Ensure the <file>.atr</file> file and <file>audio/</file> folder 
+      are in the same directory.</p></item>
+      <item><p>Check that audio files haven't been moved or deleted.</p></item>
+      <item><p>Verify the project file isn't corrupted. It's a JSON file that 
+      can be opened in a text editor.</p></item>
+    </list>
+  </section>
+
+  <section id="app-wont-start">
+    <title>Application Won't Start</title>
+    <p><em style="strong">Problem:</em> The application fails to launch.</p>
+    <p><em style="strong">Solutions:</em></p>
+    <list>
+      <item><p>Run from terminal to see error messages:</p>
+        <screen>./audio_recorder.py</screen>
+      </item>
+      <item><p>Ensure Python dependencies are installed:</p>
+        <screen>pip install PyGObject</screen>
+      </item>
+      <item><p>Verify GTK4 and libadwaita are installed on your system.</p></item>
+      <item><p>Check that GStreamer is installed for playback functionality.</p></item>
+    </list>
+  </section>
+
+</page>
+

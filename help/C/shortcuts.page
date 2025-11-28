@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<page xmlns="http://projectmallard.org/1.0/"
+      xmlns:its="http://www.w3.org/2005/11/its"
+      type="topic"
+      id="shortcuts">
+
+  <info>
+    <link type="guide" xref="index#reference"/>
+    <credit type="author">
+      <name>Audio Recorder Team</name>
+    </credit>
+    <license>
+      <p>Creative Commons Share Alike 4.0</p>
+    </license>
+    <desc>Keyboard shortcuts reference</desc>
+  </info>
+
+  <title>Keyboard Shortcuts</title>
+
+  <p>Use keyboard shortcuts to work more efficiently with <app>Audio Recorder</app>.</p>
+
+  <note style="tip">
+    <p>Press <keyseq><key>Ctrl</key><key>?</key></keyseq> to view shortcuts 
+    within the application.</p>
+  </note>
+
+  <section id="project-shortcuts">
+    <title>Project</title>
+    <table frame="all" rules="rows">
+      <tr>
+        <td><p>New Project</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>N</key></keyseq></p></td>
+      </tr>
+      <tr>
+        <td><p>Open Project</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>O</key></keyseq></p></td>
+      </tr>
+      <tr>
+        <td><p>Save Project</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>S</key></keyseq></p></td>
+      </tr>
+      <tr>
+        <td><p>Save Project As</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>Shift</key><key>S</key></keyseq></p></td>
+      </tr>
+    </table>
+  </section>
+
+  <section id="track-shortcuts">
+    <title>Tracks</title>
+    <table frame="all" rules="rows">
+      <tr>
+        <td><p>Add Track</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>T</key></keyseq></p></td>
+      </tr>
+      <tr>
+        <td><p>Import Audio</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>I</key></keyseq></p></td>
+      </tr>
+    </table>
+  </section>
+
+  <section id="playback-shortcuts">
+    <title>Playback</title>
+    <table frame="all" rules="rows">
+      <tr>
+        <td><p>Play / Pause All</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>Space</key></keyseq></p></td>
+      </tr>
+      <tr>
+        <td><p>Stop All</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>.</key></keyseq></p></td>
+      </tr>
+      <tr>
+        <td><p>Toggle Monitoring</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>L</key></keyseq></p></td>
+      </tr>
+    </table>
+  </section>
+
+  <section id="export-shortcuts">
+    <title>Export</title>
+    <table frame="all" rules="rows">
+      <tr>
+        <td><p>Export Tracks</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>Shift</key><key>T</key></keyseq></p></td>
+      </tr>
+      <tr>
+        <td><p>Export Mixed</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>Shift</key><key>X</key></keyseq></p></td>
+      </tr>
+      <tr>
+        <td><p>Export All</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>Shift</key><key>A</key></keyseq></p></td>
+      </tr>
+    </table>
+  </section>
+
+  <section id="help-shortcuts">
+    <title>Help</title>
+    <table frame="all" rules="rows">
+      <tr>
+        <td><p>Help</p></td>
+        <td><p><key>F1</key></p></td>
+      </tr>
+      <tr>
+        <td><p>Keyboard Shortcuts</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>?</key></keyseq></p></td>
+      </tr>
+    </table>
+  </section>
+
+</page>
+

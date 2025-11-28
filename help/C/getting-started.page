@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<page xmlns="http://projectmallard.org/1.0/"
+      xmlns:its="http://www.w3.org/2005/11/its"
+      type="topic"
+      id="getting-started">
+
+  <info>
+    <link type="guide" xref="index#getting-started" group="first"/>
+    <credit type="author">
+      <name>Audio Recorder Team</name>
+    </credit>
+    <license>
+      <p>Creative Commons Share Alike 4.0</p>
+    </license>
+    <desc>Learn the basics of Audio Recorder</desc>
+  </info>
+
+  <title>Getting Started</title>
+
+  <p>Welcome to <app>Audio Recorder</app>! This guide will help you get started 
+  with recording and managing audio tracks.</p>
+
+  <section id="requirements">
+    <title>Requirements</title>
+    <list>
+      <item><p>GNOME desktop environment (or GTK4/libadwaita compatible desktop)</p></item>
+      <item><p>PipeWire audio system with <cmd>pw-record</cmd> and <cmd>pw-play</cmd></p></item>
+      <item><p>GStreamer 1.0 for playback</p></item>
+    </list>
+  </section>
+
+  <section id="first-recording">
+    <title>Your First Recording</title>
+    <steps>
+      <item><p>Launch <app>Audio Recorder</app>. A new project with one empty track is created automatically.</p></item>
+      <item><p>Click the <gui style="button">Record</gui> button (red circle) on the track.</p></item>
+      <item><p>Speak or play your audio.</p></item>
+      <item><p>Click the <gui style="button">Stop</gui> button to finish recording.</p></item>
+      <item><p>Click the <gui style="button">Play</gui> button to listen to your recording.</p></item>
+    </steps>
+  </section>
+
+  <section id="saving">
+    <title>Saving Your Work</title>
+    <p>To save your project:</p>
+    <steps>
+      <item><p>Press <keyseq><key>Ctrl</key><key>S</key></keyseq> or select 
+      <guiseq><gui>Menu</gui><gui>Save Project</gui></guiseq>.</p></item>
+      <item><p>Choose a location and name for your project folder.</p></item>
+      <item><p>Your project and all recordings are saved together.</p></item>
+    </steps>
+    <note style="tip">
+      <p>The application will prompt you to save unsaved work when closing.</p>
+    </note>
+  </section>
+
+</page>
+

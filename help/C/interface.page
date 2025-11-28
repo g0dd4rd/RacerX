@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<page xmlns="http://projectmallard.org/1.0/"
+      xmlns:its="http://www.w3.org/2005/11/its"
+      type="topic"
+      id="interface">
+
+  <info>
+    <link type="guide" xref="index#getting-started" group="second"/>
+    <credit type="author">
+      <name>Audio Recorder Team</name>
+    </credit>
+    <license>
+      <p>Creative Commons Share Alike 4.0</p>
+    </license>
+    <desc>Learn about the Audio Recorder interface</desc>
+  </info>
+
+  <title>Interface Overview</title>
+
+  <p>The <app>Audio Recorder</app> interface consists of a header bar with 
+  global controls and a track list showing all your audio tracks.</p>
+
+  <section id="header-bar">
+    <title>Header Bar</title>
+    <p>The header bar contains the main controls for the application:</p>
+    
+    <terms>
+      <item>
+        <title><gui style="button">+ (Add Track)</gui></title>
+        <p>Creates a new empty track. Keyboard shortcut: <keyseq><key>Ctrl</key><key>T</key></keyseq></p>
+      </item>
+      <item>
+        <title><gui style="button">▶ (Play/Pause All)</gui></title>
+        <p>Plays or pauses all tracks simultaneously. Keyboard shortcut: <keyseq><key>Ctrl</key><key>Space</key></keyseq></p>
+      </item>
+      <item>
+        <title><gui style="button">⏹ (Stop All)</gui></title>
+        <p>Stops all playback and resets to the beginning. Keyboard shortcut: <keyseq><key>Ctrl</key><key>.</key></keyseq></p>
+      </item>
+      <item>
+        <title><gui style="button">🔊 (Monitor)</gui></title>
+        <p>Toggles live input monitoring. Keyboard shortcut: <keyseq><key>Ctrl</key><key>L</key></keyseq></p>
+      </item>
+      <item>
+        <title><gui style="button">☰ (Menu)</gui></title>
+        <p>Opens the main application menu with project and export options.</p>
+      </item>
+    </terms>
+  </section>
+
+  <section id="track-list">
+    <title>Track List</title>
+    <p>Each track in the list displays:</p>
+    
+    <terms>
+      <item>
+        <title><gui style="button">✏️ (Edit)</gui></title>
+        <p>Click to rename the track.</p>
+      </item>
+      <item>
+        <title>Track Name and Status</title>
+        <p>Shows the track name and current state (Ready, Recording, Playing, Paused, Muted).</p>
+      </item>
+      <item>
+        <title><gui style="button">🔴 (Record)</gui></title>
+        <p>Start recording on this track.</p>
+      </item>
+      <item>
+        <title><gui style="button">⏹ (Stop)</gui></title>
+        <p>Stop the current recording.</p>
+      </item>
+      <item>
+        <title><gui style="button">▶/⏸ (Play/Pause)</gui></title>
+        <p>Play or pause this individual track.</p>
+      </item>
+      <item>
+        <title><gui style="button">🔊/🔇 (Mute)</gui></title>
+        <p>Mute or unmute this track during playback.</p>
+      </item>
+      <item>
+        <title><gui style="button">🗑️ (Delete)</gui></title>
+        <p>Remove this track and its recording.</p>
+      </item>
+    </terms>
+  </section>
+
+  <section id="track-states">
+    <title>Track States</title>
+    <terms>
+      <item>
+        <title>Ready</title>
+        <p>Track has no recording or playback is stopped.</p>
+      </item>
+      <item>
+        <title>Recording…</title>
+        <p>Currently recording audio (highlighted in red).</p>
+      </item>
+      <item>
+        <title>Playing…</title>
+        <p>Currently playing back the recording.</p>
+      </item>
+      <item>
+        <title>Paused</title>
+        <p>Playback is paused and can be resumed.</p>
+      </item>
+      <item>
+        <title>Playing (muted)…</title>
+        <p>Track is playing but audio output is muted.</p>
+      </item>
+    </terms>
+  </section>
+
+</page>
+

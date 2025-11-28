@@ -32,83 +32,81 @@ class AudioRecorderApp(Adw.Application):
         win = AudioRecorderWindow(application=self)
         win.present()
 
-class TrackRow(Gtk.ListBoxRow):
+class TrackRow(Adw.ActionRow):
     def __init__(self, track, on_record, on_stop, on_play, on_delete):
         super().__init__()
         self.track = track
         
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        box.set_margin_top(5)
-        box.set_margin_bottom(5)
-        box.set_margin_start(10)
-        box.set_margin_end(10)
+        self.set_title(track.name)
+        self.set_subtitle("Ready")
         
-        # Track name
-        self.name_label = Gtk.Label(label=track.name)
-        self.name_label.set_hexpand(True)
-        self.name_label.set_halign(Gtk.Align.START)
-        box.append(self.name_label)
-        
-        # Status indicator
-        self.status_label = Gtk.Label(label="Ready")
-        self.status_label.add_css_class("dim-label")
-        box.append(self.status_label)
+        # Button box for controls
+        button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        button_box.set_valign(Gtk.Align.CENTER)
         
         # Record button
-        self.record_btn = Gtk.Button(label="⏺")
-        self.record_btn.set_tooltip_text("Record")
+        self.record_btn = Gtk.Button()
+        self.record_btn.set_icon_name("media-record-symbolic")
+        self.record_btn.set_tooltip_text("Start recording")
+        self.record_btn.add_css_class("circular")
         self.record_btn.connect("clicked", lambda b: on_record(self))
-        box.append(self.record_btn)
+        button_box.append(self.record_btn)
         
         # Stop button
-        self.stop_btn = Gtk.Button(label="⏹")
-        self.stop_btn.set_tooltip_text("Stop")
+        self.stop_btn = Gtk.Button()
+        self.stop_btn.set_icon_name("media-playback-stop-symbolic")
+        self.stop_btn.set_tooltip_text("Stop recording")
+        self.stop_btn.add_css_class("circular")
         self.stop_btn.set_sensitive(False)
         self.stop_btn.connect("clicked", lambda b: on_stop(self))
-        box.append(self.stop_btn)
+        button_box.append(self.stop_btn)
         
         # Play button
-        self.play_btn = Gtk.Button(label="▶")
-        self.play_btn.set_tooltip_text("Play")
+        self.play_btn = Gtk.Button()
+        self.play_btn.set_icon_name("media-playback-start-symbolic")
+        self.play_btn.set_tooltip_text("Play recording")
+        self.play_btn.add_css_class("circular")
         self.play_btn.set_sensitive(False)
         self.play_btn.connect("clicked", lambda b: on_play(self))
-        box.append(self.play_btn)
+        button_box.append(self.play_btn)
         
         # Delete button
-        delete_btn = Gtk.Button(label="🗑")
-        delete_btn.set_tooltip_text("Delete Track")
+        delete_btn = Gtk.Button()
+        delete_btn.set_icon_name("edit-delete-symbolic")
+        delete_btn.set_tooltip_text("Delete track")
+        delete_btn.add_css_class("circular")
         delete_btn.add_css_class("destructive-action")
         delete_btn.connect("clicked", lambda b: on_delete(self))
-        box.append(delete_btn)
+        button_box.append(delete_btn)
         
-        self.set_child(box)
+        self.add_suffix(button_box)
         
     def set_recording(self, recording):
         self.record_btn.set_sensitive(not recording)
         self.stop_btn.set_sensitive(recording)
         self.play_btn.set_sensitive(False)
         if recording:
-            self.status_label.set_label("Recording...")
-            self.status_label.add_css_class("error")
+            self.set_subtitle("Recording…")
+            self.add_css_class("error")
         else:
-            self.status_label.set_label("Stopped")
-            self.status_label.remove_css_class("error")
+            self.set_subtitle("Stopped")
+            self.remove_css_class("error")
             if self.track.temp_file and os.path.exists(self.track.temp_file):
                 self.play_btn.set_sensitive(True)
     
     def set_playing(self, playing):
         if playing:
-            self.play_btn.set_label("⏸")
-            self.status_label.set_label("Playing...")
+            self.play_btn.set_icon_name("media-playback-pause-symbolic")
+            self.set_subtitle("Playing…")
         else:
-            self.play_btn.set_label("▶")
-            self.status_label.set_label("Ready")
+            self.play_btn.set_icon_name("media-playback-start-symbolic")
+            self.set_subtitle("Ready")
 
 class AudioRecorderWindow(Adw.ApplicationWindow):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.set_title("Multi-Track Audio Recorder")
-        self.set_default_size(600, 500)
+        self.set_title("Audio Recorder")
+        self.set_default_size(500, 450)
         
         self.playing_track = None
         self.play_process = None
@@ -117,34 +115,49 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         # Header bar
         header_bar = Adw.HeaderBar()
         
-        # Menu button
+        # Add track button in header
+        add_track_btn = Gtk.Button()
+        add_track_btn.set_icon_name("list-add-symbolic")
+        add_track_btn.set_tooltip_text("Add new track")
+        add_track_btn.connect("clicked", self.on_add_track)
+        header_bar.pack_start(add_track_btn)
+        
+        # Monitor toggle button in header
+        self.monitor_toggle = Gtk.ToggleButton()
+        self.monitor_toggle.set_icon_name("audio-volume-high-symbolic")
+        self.monitor_toggle.set_tooltip_text("Toggle input monitoring")
+        self.monitor_toggle.connect("toggled", self.on_monitor_toggled)
+        header_bar.pack_end(self.monitor_toggle)
+        
+        # Menu button (on the right per HIG)
         menu_button = Gtk.MenuButton()
         menu_button.set_icon_name("open-menu-symbolic")
+        menu_button.set_tooltip_text("Main menu")
         
         menu = Gio.Menu()
         
         # Project section
         project_section = Gio.Menu()
         project_section.append("New Project", "win.new_project")
-        project_section.append("Open Project", "win.open_project")
+        project_section.append("Open Project…", "win.open_project")
         project_section.append("Save Project", "win.save_project")
-        project_section.append("Save Project As...", "win.save_project_as")
+        project_section.append("Save Project As…", "win.save_project_as")
         menu.append_section(None, project_section)
         
         # Import section
         import_section = Gio.Menu()
-        import_section.append("Import Audio File", "win.import_audio")
+        import_section.append("Import Audio…", "win.import_audio")
         menu.append_section(None, import_section)
         
-        menu_button.set_menu_model(menu)
-        header_bar.pack_start(menu_button)
+        # Export section
+        export_section = Gio.Menu()
+        export_section.append("Export Tracks…", "win.export_tracks")
+        export_section.append("Export Mixed…", "win.export_mixed")
+        export_section.append("Export All…", "win.export_all")
+        menu.append_section(None, export_section)
         
-        # Monitor toggle button in header
-        self.monitor_toggle = Gtk.ToggleButton()
-        self.monitor_toggle.set_icon_name("audio-volume-high-symbolic")
-        self.monitor_toggle.set_tooltip_text("Enable/Disable Monitoring")
-        self.monitor_toggle.connect("toggled", self.on_monitor_toggled)
-        header_bar.pack_end(self.monitor_toggle)
+        menu_button.set_menu_model(menu)
+        header_bar.pack_end(menu_button)
         
         # Actions
         self.create_actions()
@@ -153,23 +166,20 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         toolbar_view = Adw.ToolbarView()
         toolbar_view.add_top_bar(header_bar)
         
-        # Main box
-        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
-        main_box.set_margin_top(10)
-        main_box.set_margin_bottom(10)
-        main_box.set_margin_start(10)
-        main_box.set_margin_end(10)
+        # Main box with clamp for proper width
+        clamp = Adw.Clamp()
+        clamp.set_maximum_size(600)
+        
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        main_box.set_margin_top(12)
+        main_box.set_margin_bottom(12)
+        main_box.set_margin_start(12)
+        main_box.set_margin_end(12)
         
         # Status label
         self.status_label = Gtk.Label(label="Ready to record")
-        self.status_label.add_css_class("title-3")
+        self.status_label.add_css_class("dim-label")
         main_box.append(self.status_label)
-        
-        # Add track button
-        add_track_btn = Gtk.Button(label="➕ Add Track")
-        add_track_btn.add_css_class("suggested-action")
-        add_track_btn.connect("clicked", self.on_add_track)
-        main_box.append(add_track_btn)
         
         # Scrolled window for tracks
         scrolled = Gtk.ScrolledWindow()
@@ -178,33 +188,15 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         
         # Track list
         self.track_list = Gtk.ListBox()
+        self.track_list.set_selection_mode(Gtk.SelectionMode.NONE)
         self.track_list.add_css_class("boxed-list")
         scrolled.set_child(self.track_list)
         main_box.append(scrolled)
         
-        # Export buttons
-        export_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
-        export_box.set_halign(Gtk.Align.CENTER)
-        
-        self.export_individual_btn = Gtk.Button(label="💾 Export Tracks")
-        self.export_individual_btn.set_sensitive(False)
-        self.export_individual_btn.connect("clicked", self.on_export_individual)
-        export_box.append(self.export_individual_btn)
-        
-        self.export_mixed_btn = Gtk.Button(label="💾 Export Mixed")
-        self.export_mixed_btn.set_sensitive(False)
-        self.export_mixed_btn.connect("clicked", self.on_export_mixed)
-        export_box.append(self.export_mixed_btn)
-        
-        self.export_all_btn = Gtk.Button(label="💾 Export All")
-        self.export_all_btn.set_sensitive(False)
-        self.export_all_btn.connect("clicked", self.on_export_all)
-        export_box.append(self.export_all_btn)
-        
-        main_box.append(export_box)
+        clamp.set_child(main_box)
         
         # Set content
-        toolbar_view.set_content(main_box)
+        toolbar_view.set_content(clamp)
         self.set_content(toolbar_view)
         
         # Add first track by default
@@ -235,6 +227,24 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         action = Gio.SimpleAction.new("import_audio", None)
         action.connect("activate", self.on_import_audio)
         self.add_action(action)
+        
+        # Export Tracks
+        self.export_tracks_action = Gio.SimpleAction.new("export_tracks", None)
+        self.export_tracks_action.connect("activate", self.on_export_individual)
+        self.export_tracks_action.set_enabled(False)
+        self.add_action(self.export_tracks_action)
+        
+        # Export Mixed
+        self.export_mixed_action = Gio.SimpleAction.new("export_mixed", None)
+        self.export_mixed_action.connect("activate", self.on_export_mixed)
+        self.export_mixed_action.set_enabled(False)
+        self.add_action(self.export_mixed_action)
+        
+        # Export All
+        self.export_all_action = Gio.SimpleAction.new("export_all", None)
+        self.export_all_action.connect("activate", self.on_export_all)
+        self.export_all_action.set_enabled(False)
+        self.add_action(self.export_all_action)
     
     def on_new_project(self, action, param):
         # Check if there are unsaved changes
@@ -278,7 +288,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                 self.pending_callback = callback
                 save_dialog = Gtk.FileDialog.new()
                 save_dialog.set_title("Save Project As")
-                save_dialog.set_initial_name("project.atr")
+                save_dialog.set_initial_name("project")
                 save_dialog.save(self, None, self.on_save_before_action_response)
         elif response == "discard":
             # Proceed without saving
@@ -290,8 +300,6 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             file = dialog.save_finish(result)
             if file:
                 project_path = file.get_path()
-                if not project_path.endswith('.atr'):
-                    project_path += '.atr'
                 self.save_project(project_path)
                 
                 # Execute the pending callback
@@ -411,7 +419,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
     def on_save_project_as(self, action, param):
         dialog = Gtk.FileDialog.new()
         dialog.set_title("Save Project As")
-        dialog.set_initial_name("project.atr")
+        dialog.set_initial_name("project")
         
         dialog.save(self, None, self.on_save_project_response)
     
@@ -420,8 +428,6 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             file = dialog.save_finish(result)
             if file:
                 project_path = file.get_path()
-                if not project_path.endswith('.atr'):
-                    project_path += '.atr'
                 self.save_project(project_path)
         except Exception as e:
             if "dismissed" not in str(e).lower():
@@ -431,11 +437,15 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         app = self.get_application()
         
         try:
-            project_dir = os.path.dirname(project_path)
-            project_name = os.path.splitext(os.path.basename(project_path))[0]
-            audio_dir = os.path.join(project_dir, f"{project_name}_audio")
+            # Project path is treated as a folder containing everything
+            # Structure: project_folder/project.atr + project_folder/audio/
+            project_dir = project_path if os.path.isdir(project_path) else os.path.splitext(project_path)[0]
+            project_name = os.path.basename(project_dir)
+            audio_dir = os.path.join(project_dir, "audio")
+            project_file = os.path.join(project_dir, f"{project_name}.atr")
             
-            # Create audio directory
+            # Create project and audio directories
+            os.makedirs(project_dir, exist_ok=True)
             os.makedirs(audio_dir, exist_ok=True)
             
             # Save track data
@@ -449,7 +459,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                     
                     tracks_data.append({
                         'name': track.name,
-                        'audio_file': os.path.join(f"{project_name}_audio", audio_filename)
+                        'audio_file': os.path.join("audio", audio_filename)
                     })
             
             # Save project file
@@ -458,11 +468,11 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                 'next_track_number': app.next_track_number
             }
             
-            with open(project_path, 'w') as f:
+            with open(project_file, 'w') as f:
                 json.dump(project_data, f, indent=2)
             
-            app.project_file = project_path
-            self.status_label.set_label(f"Project saved: {os.path.basename(project_path)}")
+            app.project_file = project_file
+            self.status_label.set_label(f"Project saved: {project_name}")
             self.update_title()
             
         except Exception as e:
@@ -526,10 +536,10 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
     def update_title(self):
         app = self.get_application()
         if app.project_file:
-            project_name = os.path.basename(app.project_file)
-            self.set_title(f"Multi-Track Audio Recorder - {project_name}")
+            project_name = os.path.splitext(os.path.basename(app.project_file))[0]
+            self.set_title(f"{project_name} — Audio Recorder")
         else:
-            self.set_title("Multi-Track Audio Recorder")
+            self.set_title("Audio Recorder")
     
     def add_track(self):
         app = self.get_application()
@@ -663,13 +673,13 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
     def update_export_buttons(self):
         app = self.get_application()
         has_recordings = any(t.temp_file and os.path.exists(t.temp_file) for t in app.tracks)
-        self.export_individual_btn.set_sensitive(has_recordings)
-        self.export_mixed_btn.set_sensitive(has_recordings)
-        self.export_all_btn.set_sensitive(has_recordings)
+        self.export_tracks_action.set_enabled(has_recordings)
+        self.export_mixed_action.set_enabled(has_recordings)
+        self.export_all_action.set_enabled(has_recordings)
     
-    def on_export_individual(self, button):
+    def on_export_individual(self, action, param):
         dialog = Gtk.FileDialog.new()
-        dialog.set_title("Select Folder for Individual Tracks")
+        dialog.set_title("Export Tracks")
         
         dialog.select_folder(self, None, self.on_export_individual_response)
     
@@ -691,9 +701,9 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             if "dismissed" not in str(e).lower():
                 self.show_error_dialog(f"Failed to export: {str(e)}")
     
-    def on_export_mixed(self, button):
+    def on_export_mixed(self, action, param):
         dialog = Gtk.FileDialog.new()
-        dialog.set_title("Export Mixed Track")
+        dialog.set_title("Export Mixed")
         dialog.set_initial_name("mixed.wav")
         
         dialog.save(self, None, self.on_export_mixed_response)
@@ -709,9 +719,9 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             if "dismissed" not in str(e).lower():
                 self.show_error_dialog(f"Failed to export: {str(e)}")
     
-    def on_export_all(self, button):
+    def on_export_all(self, action, param):
         dialog = Gtk.FileDialog.new()
-        dialog.set_title("Select Folder for All Exports")
+        dialog.set_title("Export All")
         
         dialog.select_folder(self, None, self.on_export_all_response)
     

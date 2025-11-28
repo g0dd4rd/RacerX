@@ -159,6 +159,25 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         add_track_btn.connect("clicked", self.on_add_track)
         header_bar.pack_start(add_track_btn)
         
+        # Global playback controls
+        playback_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        playback_box.add_css_class("linked")
+        
+        self.play_all_btn = Gtk.Button()
+        self.play_all_btn.set_icon_name("media-playback-start-symbolic")
+        self.play_all_btn.set_tooltip_text("Play all tracks")
+        self.play_all_btn.connect("clicked", self.on_play_all)
+        playback_box.append(self.play_all_btn)
+        
+        self.stop_all_btn = Gtk.Button()
+        self.stop_all_btn.set_icon_name("media-playback-stop-symbolic")
+        self.stop_all_btn.set_tooltip_text("Stop all tracks")
+        self.stop_all_btn.set_sensitive(False)
+        self.stop_all_btn.connect("clicked", self.on_stop_all)
+        playback_box.append(self.stop_all_btn)
+        
+        header_bar.pack_start(playback_box)
+        
         # Monitor toggle button in header
         self.monitor_toggle = Gtk.ToggleButton()
         self.monitor_toggle.set_icon_name("audio-volume-high-symbolic")
@@ -714,6 +733,8 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                     
                 except Exception as e:
                     self.show_error_dialog(f"Failed to play track: {str(e)}")
+        
+        self.update_global_playback_buttons()
     
     def check_playback_finished(self):
         # Check all playing tracks for completion
@@ -731,8 +752,77 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         for row in finished_tracks:
             self.playing_tracks.discard(row)
         
+        # Update global playback buttons
+        self.update_global_playback_buttons()
+        
         # Continue monitoring if there are still playing tracks
         return len(self.playing_tracks) > 0
+    
+    def on_play_all(self, button):
+        """Start playing all tracks that have recordings"""
+        app = self.get_application()
+        
+        # Get all track rows
+        row = self.track_list.get_first_child()
+        started_any = False
+        
+        while row:
+            if isinstance(row, TrackRow):
+                track = row.track
+                # Only play tracks that have recordings and aren't already playing
+                if track.temp_file and os.path.exists(track.temp_file) and not track.playing:
+                    try:
+                        track.play_process = subprocess.Popen([
+                            'pw-play',
+                            track.temp_file
+                        ])
+                        
+                        track.playing = True
+                        row.set_playing(True)
+                        self.playing_tracks.add(row)
+                        started_any = True
+                        
+                    except Exception as e:
+                        self.show_error_dialog(f"Failed to play track {track.name}: {str(e)}")
+            
+            row = row.get_next_sibling()
+        
+        # Start monitoring if we started any tracks
+        if started_any and len(self.playing_tracks) > 0:
+            GLib.timeout_add(100, self.check_playback_finished)
+        
+        self.update_global_playback_buttons()
+    
+    def on_stop_all(self, button):
+        """Stop all currently playing tracks"""
+        # Make a copy since we'll be modifying the set
+        for row in list(self.playing_tracks):
+            track = row.track
+            if track.playing and track.play_process:
+                track.play_process.terminate()
+                track.play_process.wait()
+                track.play_process = None
+            track.playing = False
+            row.set_playing(False)
+        
+        self.playing_tracks.clear()
+        self.update_global_playback_buttons()
+    
+    def update_global_playback_buttons(self):
+        """Update the state of global play/stop buttons"""
+        app = self.get_application()
+        
+        # Check if any tracks have recordings
+        has_recordings = any(t.temp_file and os.path.exists(t.temp_file) for t in app.tracks)
+        
+        # Check if any tracks are currently playing
+        any_playing = len(self.playing_tracks) > 0
+        
+        # Play button enabled if there are recordings and not all are playing
+        self.play_all_btn.set_sensitive(has_recordings and not any_playing)
+        
+        # Stop button enabled if any tracks are playing
+        self.stop_all_btn.set_sensitive(any_playing)
     
     def on_track_delete(self, row):
         app = self.get_application()
@@ -767,6 +857,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         self.export_tracks_action.set_enabled(has_recordings)
         self.export_mixed_action.set_enabled(has_recordings)
         self.export_all_action.set_enabled(has_recordings)
+        self.update_global_playback_buttons()
     
     def on_export_individual(self, action, param):
         dialog = Gtk.FileDialog.new()

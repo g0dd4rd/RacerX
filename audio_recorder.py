@@ -29,6 +29,41 @@ class AudioRecorderApp(Adw.Application):
         self.tracks = []
         self.next_track_number = 1
         self.project_file = None
+        self.config_dir = self._get_config_dir()
+        self.config_file = os.path.join(self.config_dir, 'config.json')
+    
+    def _get_config_dir(self):
+        """Get the application config directory (XDG compliant)"""
+        xdg_config = os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config'))
+        config_dir = os.path.join(xdg_config, 'audio-recorder')
+        os.makedirs(config_dir, exist_ok=True)
+        return config_dir
+    
+    def get_recent_project(self):
+        """Get the most recent project path from config"""
+        try:
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r') as f:
+                    config = json.load(f)
+                    recent = config.get('recent_project')
+                    if recent and os.path.exists(recent):
+                        return recent
+        except Exception:
+            pass
+        return None
+    
+    def set_recent_project(self, project_path):
+        """Save the most recent project path to config"""
+        try:
+            config = {}
+            if os.path.exists(self.config_file):
+                with open(self.config_file, 'r') as f:
+                    config = json.load(f)
+            config['recent_project'] = project_path
+            with open(self.config_file, 'w') as f:
+                json.dump(config, f, indent=2)
+        except Exception:
+            pass  # Silently fail - config is not critical
         
     def do_activate(self):
         win = AudioRecorderWindow(application=self)
@@ -200,11 +235,26 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         toolbar_view.set_content(clamp)
         self.set_content(toolbar_view)
         
-        # Add first track by default
-        self.add_track()
+        # Try to load the most recent project, otherwise create a new one
+        self.load_recent_or_new_project()
         
         # Connect close request to handle unsaved changes
         self.connect("close-request", self.on_close_request)
+    
+    def load_recent_or_new_project(self):
+        """Load the most recent project if available, otherwise create a new one"""
+        app = self.get_application()
+        recent_project = app.get_recent_project()
+        
+        if recent_project:
+            try:
+                self.load_project(recent_project)
+                return
+            except Exception:
+                pass  # Fall through to create new project
+        
+        # No recent project or loading failed - create new project
+        self.add_track()
         
     def create_actions(self):
         # New Project
@@ -406,6 +456,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                     row.play_btn.set_sensitive(True)
             
             app.next_track_number = project_data.get('next_track_number', len(app.tracks) + 1)
+            app.set_recent_project(project_path)
             self.status_label.set_label("Project loaded")
             self.update_export_buttons()
             self.update_title()
@@ -493,6 +544,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                 json.dump(project_data, f, indent=2)
             
             app.project_file = project_file
+            app.set_recent_project(project_file)
             self.status_label.set_label(f"Project saved: {project_name}")
             self.update_title()
             

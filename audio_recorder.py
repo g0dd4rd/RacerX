@@ -74,7 +74,35 @@ class AudioRecorderApp(Adw.Application):
         
     def do_activate(self):
         win = AudioRecorderWindow(application=self)
+        self.setup_accelerators()
         win.present()
+    
+    def setup_accelerators(self):
+        """Set up keyboard shortcuts for all actions"""
+        # Project actions
+        self.set_accels_for_action("win.new_project", ["<Control>n"])
+        self.set_accels_for_action("win.open_project", ["<Control>o"])
+        self.set_accels_for_action("win.save_project", ["<Control>s"])
+        self.set_accels_for_action("win.save_project_as", ["<Control><Shift>s"])
+        
+        # Import/Export actions
+        self.set_accels_for_action("win.import_audio", ["<Control>i"])
+        self.set_accels_for_action("win.export_tracks", ["<Control><Shift>t"])
+        self.set_accels_for_action("win.export_mixed", ["<Control><Shift>x"])
+        self.set_accels_for_action("win.export_all", ["<Control><Shift>a"])
+        
+        # Track actions
+        self.set_accels_for_action("win.add_track", ["<Control>t"])
+        
+        # Playback actions (Ctrl+Space avoids conflict with widget activation)
+        self.set_accels_for_action("win.play_pause_all", ["<Control>space"])
+        self.set_accels_for_action("win.stop_all", ["<Control>period"])
+        
+        # Monitoring
+        self.set_accels_for_action("win.toggle_monitoring", ["<Control>l"])
+        
+        # Help
+        self.set_accels_for_action("win.show_shortcuts", ["<Control>question"])
 
 class TrackRow(Adw.ActionRow):
     def __init__(self, track, on_record, on_stop, on_play, on_mute, on_rename, on_delete):
@@ -201,7 +229,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         # Add track button in header
         add_track_btn = Gtk.Button()
         add_track_btn.set_icon_name("list-add-symbolic")
-        add_track_btn.set_tooltip_text("Add new track")
+        add_track_btn.set_tooltip_text("Add new track (Ctrl+T)")
         add_track_btn.connect("clicked", self.on_add_track)
         header_bar.pack_start(add_track_btn)
         
@@ -211,13 +239,13 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         
         self.play_all_btn = Gtk.Button()
         self.play_all_btn.set_icon_name("media-playback-start-symbolic")
-        self.play_all_btn.set_tooltip_text("Play all tracks")
+        self.play_all_btn.set_tooltip_text("Play all tracks (Ctrl+Space)")
         self.play_all_btn.connect("clicked", self.on_play_all)
         playback_box.append(self.play_all_btn)
         
         self.stop_all_btn = Gtk.Button()
         self.stop_all_btn.set_icon_name("media-playback-stop-symbolic")
-        self.stop_all_btn.set_tooltip_text("Stop all tracks")
+        self.stop_all_btn.set_tooltip_text("Stop all tracks (Ctrl+.)")
         self.stop_all_btn.set_sensitive(False)
         self.stop_all_btn.connect("clicked", self.on_stop_all)
         playback_box.append(self.stop_all_btn)
@@ -227,7 +255,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         # Monitor toggle button in header
         self.monitor_toggle = Gtk.ToggleButton()
         self.monitor_toggle.set_icon_name("audio-volume-high-symbolic")
-        self.monitor_toggle.set_tooltip_text("Toggle input monitoring")
+        self.monitor_toggle.set_tooltip_text("Toggle input monitoring (Ctrl+L)")
         self.monitor_toggle.connect("toggled", self.on_monitor_toggled)
         header_bar.pack_end(self.monitor_toggle)
         
@@ -257,6 +285,11 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         export_section.append("Export Mixed…", "win.export_mixed")
         export_section.append("Export All…", "win.export_all")
         menu.append_section(None, export_section)
+        
+        # Help section
+        help_section = Gio.Menu()
+        help_section.append("Keyboard Shortcuts", "win.show_shortcuts")
+        menu.append_section(None, help_section)
         
         menu_button.set_menu_model(menu)
         header_bar.pack_end(menu_button)
@@ -366,6 +399,31 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         self.export_all_action.connect("activate", self.on_export_all)
         self.export_all_action.set_enabled(False)
         self.add_action(self.export_all_action)
+        
+        # Add Track
+        action = Gio.SimpleAction.new("add_track", None)
+        action.connect("activate", lambda a, p: self.add_track())
+        self.add_action(action)
+        
+        # Play/Pause All
+        action = Gio.SimpleAction.new("play_pause_all", None)
+        action.connect("activate", lambda a, p: self.on_play_all(None))
+        self.add_action(action)
+        
+        # Stop All
+        action = Gio.SimpleAction.new("stop_all", None)
+        action.connect("activate", lambda a, p: self.stop_all_playback())
+        self.add_action(action)
+        
+        # Toggle Monitoring
+        action = Gio.SimpleAction.new("toggle_monitoring", None)
+        action.connect("activate", self.on_toggle_monitoring_action)
+        self.add_action(action)
+        
+        # Show Keyboard Shortcuts
+        action = Gio.SimpleAction.new("show_shortcuts", None)
+        action.connect("activate", self.on_show_shortcuts)
+        self.add_action(action)
     
     def on_new_project(self, action, param):
         # Check if there are unsaved changes
@@ -1044,13 +1102,13 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         # Update play button icon based on state
         if any_playing:
             self.play_all_btn.set_icon_name("media-playback-pause-symbolic")
-            self.play_all_btn.set_tooltip_text("Pause all tracks")
+            self.play_all_btn.set_tooltip_text("Pause all tracks (Ctrl+Space)")
         else:
             self.play_all_btn.set_icon_name("media-playback-start-symbolic")
             if any_paused:
-                self.play_all_btn.set_tooltip_text("Resume all tracks")
+                self.play_all_btn.set_tooltip_text("Resume all tracks (Ctrl+Space)")
             else:
-                self.play_all_btn.set_tooltip_text("Play all tracks")
+                self.play_all_btn.set_tooltip_text("Play all tracks (Ctrl+Space)")
         
         # Play button enabled if there are recordings or paused tracks
         self.play_all_btn.set_sensitive(has_recordings or any_paused)
@@ -1209,6 +1267,10 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             self.stop_monitoring()
             self.status_label.set_label("Ready to record")
     
+    def on_toggle_monitoring_action(self, action, param):
+        """Toggle monitoring via keyboard shortcut"""
+        self.monitor_toggle.set_active(not self.monitor_toggle.get_active())
+    
     def start_monitoring(self):
         app = self.get_application()
         
@@ -1262,6 +1324,87 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             
             app.monitor_process = None
             app.monitoring = False
+    
+    def on_show_shortcuts(self, action, param):
+        """Show the keyboard shortcuts window"""
+        shortcuts_window = Gtk.ShortcutsWindow(transient_for=self, modal=True)
+        
+        # Main section
+        section = Gtk.ShortcutsSection(section_name="shortcuts", title="Shortcuts")
+        section.set_visible(True)
+        section.set_max_height(10)
+        
+        # Project group
+        project_group = Gtk.ShortcutsGroup(title="Project")
+        project_group.set_visible(True)
+        
+        shortcuts = [
+            ("New Project", "<Control>n"),
+            ("Open Project", "<Control>o"),
+            ("Save Project", "<Control>s"),
+            ("Save Project As", "<Control><Shift>s"),
+        ]
+        for title, accel in shortcuts:
+            shortcut = Gtk.ShortcutsShortcut(title=title, accelerator=accel)
+            shortcut.set_visible(True)
+            project_group.append(shortcut)
+        section.append(project_group)
+        
+        # Tracks group
+        tracks_group = Gtk.ShortcutsGroup(title="Tracks")
+        tracks_group.set_visible(True)
+        
+        shortcuts = [
+            ("Add Track", "<Control>t"),
+            ("Import Audio", "<Control>i"),
+        ]
+        for title, accel in shortcuts:
+            shortcut = Gtk.ShortcutsShortcut(title=title, accelerator=accel)
+            shortcut.set_visible(True)
+            tracks_group.append(shortcut)
+        section.append(tracks_group)
+        
+        # Playback group
+        playback_group = Gtk.ShortcutsGroup(title="Playback")
+        playback_group.set_visible(True)
+        
+        shortcuts = [
+            ("Play / Pause All", "<Control>space"),
+            ("Stop All", "<Control>period"),
+            ("Toggle Monitoring", "<Control>l"),
+        ]
+        for title, accel in shortcuts:
+            shortcut = Gtk.ShortcutsShortcut(title=title, accelerator=accel)
+            shortcut.set_visible(True)
+            playback_group.append(shortcut)
+        section.append(playback_group)
+        
+        # Export group
+        export_group = Gtk.ShortcutsGroup(title="Export")
+        export_group.set_visible(True)
+        
+        shortcuts = [
+            ("Export Tracks", "<Control><Shift>t"),
+            ("Export Mixed", "<Control><Shift>x"),
+            ("Export All", "<Control><Shift>a"),
+        ]
+        for title, accel in shortcuts:
+            shortcut = Gtk.ShortcutsShortcut(title=title, accelerator=accel)
+            shortcut.set_visible(True)
+            export_group.append(shortcut)
+        section.append(export_group)
+        
+        # Help group
+        help_group = Gtk.ShortcutsGroup(title="Help")
+        help_group.set_visible(True)
+        
+        shortcut = Gtk.ShortcutsShortcut(title="Keyboard Shortcuts", accelerator="<Control>question")
+        shortcut.set_visible(True)
+        help_group.append(shortcut)
+        section.append(help_group)
+        
+        shortcuts_window.add_section(section)
+        shortcuts_window.present()
     
     def show_error_dialog(self, message):
         dialog = Adw.AlertDialog(heading="Error", body=message)

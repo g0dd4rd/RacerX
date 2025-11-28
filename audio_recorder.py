@@ -77,12 +77,23 @@ class AudioRecorderApp(Adw.Application):
         win.present()
 
 class TrackRow(Adw.ActionRow):
-    def __init__(self, track, on_record, on_stop, on_play, on_mute, on_delete):
+    def __init__(self, track, on_record, on_stop, on_play, on_mute, on_rename, on_delete):
         super().__init__()
         self.track = track
+        self.on_rename_callback = on_rename
         
         self.set_title(track.name)
         self.set_subtitle("Ready")
+        
+        # Edit button as prefix (left side)
+        edit_btn = Gtk.Button()
+        edit_btn.set_icon_name("document-edit-symbolic")
+        edit_btn.set_tooltip_text("Rename track")
+        edit_btn.add_css_class("circular")
+        edit_btn.add_css_class("flat")
+        edit_btn.set_valign(Gtk.Align.CENTER)
+        edit_btn.connect("clicked", self.on_edit_clicked)
+        self.add_prefix(edit_btn)
         
         # Button box for controls
         button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
@@ -132,6 +143,10 @@ class TrackRow(Adw.ActionRow):
         button_box.append(delete_btn)
         
         self.add_suffix(button_box)
+    
+    def on_edit_clicked(self, button):
+        """Show rename dialog"""
+        self.on_rename_callback(self)
         
     def set_recording(self, recording):
         self.record_btn.set_sensitive(not recording)
@@ -502,6 +517,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                     self.on_track_stop,
                     self.on_track_play,
                     self.on_track_mute,
+                    self.on_track_rename,
                     self.on_track_delete
                 )
                 self.track_list.append(row)
@@ -653,6 +669,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                 self.on_track_stop,
                 self.on_track_play,
                 self.on_track_mute,
+                self.on_track_rename,
                 self.on_track_delete
             )
             self.track_list.append(row)
@@ -685,6 +702,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             self.on_track_stop,
             self.on_track_play,
             self.on_track_mute,
+            self.on_track_rename,
             self.on_track_delete
         )
         self.track_list.append(row)
@@ -799,6 +817,43 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         
         # Update row visual state
         row.set_muted(track.muted)
+    
+    def on_track_rename(self, row):
+        """Show dialog to rename a track"""
+        track = row.track
+        
+        dialog = Adw.AlertDialog(
+            heading="Rename Track",
+            body="Enter a new name for the track:"
+        )
+        
+        # Create entry for new name
+        entry = Gtk.Entry()
+        entry.set_text(track.name)
+        entry.set_activates_default(True)
+        dialog.set_extra_child(entry)
+        
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("rename", "Rename")
+        dialog.set_response_appearance("rename", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("rename")
+        dialog.set_close_response("cancel")
+        
+        dialog.connect("response", self.on_rename_response, row, entry)
+        dialog.present(self)
+    
+    def on_rename_response(self, dialog, response, row, entry):
+        """Handle rename dialog response"""
+        if response == "rename":
+            new_name = entry.get_text().strip()
+            if new_name:
+                track = row.track
+                track.name = new_name
+                row.set_title(new_name)
+                
+                # Mark project as having unsaved changes
+                app = self.get_application()
+                app.project_dirty = True
     
     def check_playback_finished(self):
         # Check all playing tracks for completion

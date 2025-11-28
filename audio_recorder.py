@@ -260,9 +260,10 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
     
     def show_save_confirmation_dialog(self, callback):
         """Show dialog asking if user wants to save before proceeding"""
-        dialog = Adw.MessageDialog.new(self)
-        dialog.set_heading("Save current project?")
-        dialog.set_body("You have unsaved work. Do you want to save it before continuing?")
+        dialog = Adw.AlertDialog(
+            heading="Save current project?",
+            body="You have unsaved work. Do you want to save it before continuing?"
+        )
         
         dialog.add_response("cancel", "Cancel")
         dialog.add_response("discard", "Don't Save")
@@ -274,7 +275,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         dialog.set_close_response("cancel")
         
         dialog.connect("response", self.on_save_confirmation_response, callback)
-        dialog.present()
+        dialog.present(self)
     
     def on_save_confirmation_response(self, dialog, response, callback):
         if response == "save":
@@ -848,11 +849,9 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             app.monitoring = False
     
     def show_error_dialog(self, message):
-        dialog = Adw.MessageDialog.new(self)
-        dialog.set_heading("Error")
-        dialog.set_body(message)
+        dialog = Adw.AlertDialog(heading="Error", body=message)
         dialog.add_response("ok", "OK")
-        dialog.present()
+        dialog.present(self)
 
 def main():
     app = AudioRecorderApp()

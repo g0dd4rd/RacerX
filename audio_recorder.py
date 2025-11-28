@@ -29,6 +29,7 @@ class AudioRecorderApp(Adw.Application):
         self.tracks = []
         self.next_track_number = 1
         self.project_file = None
+        self.project_dirty = False  # Track if there are unsaved changes
         self.config_dir = self._get_config_dir()
         self.config_file = os.path.join(self.config_dir, 'config.json')
     
@@ -255,6 +256,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         
         # No recent project or loading failed - create new project
         self.add_track()
+        app.project_dirty = False  # New empty project has no unsaved changes
         
     def create_actions(self):
         # New Project
@@ -308,9 +310,9 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             self.create_new_project()
     
     def has_unsaved_changes(self):
-        """Check if there are any tracks with recordings"""
+        """Check if there are unsaved changes"""
         app = self.get_application()
-        return any(t.temp_file and os.path.exists(t.temp_file) for t in app.tracks)
+        return app.project_dirty
     
     def show_save_confirmation_dialog(self, callback):
         """Show dialog asking if user wants to save before proceeding"""
@@ -376,9 +378,11 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         app.tracks = []
         app.next_track_number = 1
         app.project_file = None
+        app.project_dirty = False
         
         # Add first track
         self.add_track()
+        app.project_dirty = False  # Reset after add_track sets it
         self.status_label.set_label("New project created")
         self.update_title()
     
@@ -456,6 +460,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                     row.play_btn.set_sensitive(True)
             
             app.next_track_number = project_data.get('next_track_number', len(app.tracks) + 1)
+            app.project_dirty = False
             app.set_recent_project(project_path)
             self.status_label.set_label("Project loaded")
             self.update_export_buttons()
@@ -544,6 +549,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                 json.dump(project_data, f, indent=2)
             
             app.project_file = project_file
+            app.project_dirty = False
             app.set_recent_project(project_file)
             self.status_label.set_label(f"Project saved: {project_name}")
             self.update_title()
@@ -602,6 +608,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             
             self.status_label.set_label(f"Imported: {track_name}")
             self.update_export_buttons()
+            app.project_dirty = True
             
         except Exception as e:
             self.show_error_dialog(f"Failed to import audio: {str(e)}")
@@ -629,6 +636,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         )
         self.track_list.append(row)
         self.update_export_buttons()
+        app.project_dirty = True
         
     def on_add_track(self, button):
         self.add_track()
@@ -671,6 +679,9 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             track.recording = False
             row.set_recording(False)
             self.update_export_buttons()
+            # Mark project as having unsaved changes
+            app = self.get_application()
+            app.project_dirty = True
     
     def on_track_play(self, row):
         track = row.track
@@ -748,6 +759,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         app.tracks.remove(track)
         self.track_list.remove(row)
         self.update_export_buttons()
+        app.project_dirty = True
     
     def update_export_buttons(self):
         app = self.get_application()

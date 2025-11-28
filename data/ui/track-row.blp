@@ -1,0 +1,58 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $TrackRow : Adw.ActionRow {
+  [prefix]
+  Gtk.Button edit_btn {
+    icon-name: "document-edit-symbolic";
+    tooltip-text: "Rename track";
+    valign: center;
+
+    styles ["circular", "flat"]
+  }
+
+  [suffix]
+  Gtk.Box controls_box {
+    orientation: horizontal;
+    spacing: 6;
+    valign: center;
+
+    Gtk.Button record_btn {
+      icon-name: "media-record-symbolic";
+      tooltip-text: "Start recording";
+
+      styles ["circular"]
+    }
+
+    Gtk.Button stop_btn {
+      icon-name: "media-playback-stop-symbolic";
+      tooltip-text: "Stop recording";
+      sensitive: false;
+
+      styles ["circular"]
+    }
+
+    Gtk.Button play_btn {
+      icon-name: "media-playback-start-symbolic";
+      tooltip-text: "Play recording";
+      sensitive: false;
+
+      styles ["circular"]
+    }
+
+    Gtk.ToggleButton mute_btn {
+      icon-name: "audio-volume-high-symbolic";
+      tooltip-text: "Mute track";
+
+      styles ["circular"]
+    }
+
+    Gtk.Button delete_btn {
+      icon-name: "edit-delete-symbolic";
+      tooltip-text: "Delete track";
+
+      styles ["circular", "destructive-action"]
+    }
+  }
+}
+

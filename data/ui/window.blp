@@ -1,0 +1,140 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $AudioRecorderWindow : Adw.ApplicationWindow {
+  title: "Audio Recorder";
+  default-width: 500;
+  default-height: 450;
+
+  Adw.ToolbarView {
+    [top]
+    Adw.HeaderBar header_bar {
+      [start]
+      Gtk.Button add_track_btn {
+        icon-name: "list-add-symbolic";
+        tooltip-text: "Add new track (Ctrl+T)";
+      }
+
+      [start]
+      Gtk.Box playback_box {
+        orientation: horizontal;
+        spacing: 6;
+
+        styles ["linked"]
+
+        Gtk.Button play_all_btn {
+          icon-name: "media-playback-start-symbolic";
+          tooltip-text: "Play all tracks (Ctrl+Space)";
+        }
+
+        Gtk.Button stop_all_btn {
+          icon-name: "media-playback-stop-symbolic";
+          tooltip-text: "Stop all tracks (Ctrl+.)";
+          sensitive: false;
+        }
+      }
+
+      [end]
+      Gtk.MenuButton menu_button {
+        icon-name: "open-menu-symbolic";
+        tooltip-text: "Main menu";
+        menu-model: primary_menu;
+      }
+
+      [end]
+      Gtk.ToggleButton monitor_toggle {
+        icon-name: "audio-volume-high-symbolic";
+        tooltip-text: "Toggle input monitoring (Ctrl+L)";
+      }
+    }
+
+    content: Adw.Clamp {
+      maximum-size: 600;
+
+      Gtk.Box main_box {
+        orientation: vertical;
+        spacing: 12;
+        margin-top: 12;
+        margin-bottom: 12;
+        margin-start: 12;
+        margin-end: 12;
+
+        Gtk.Label status_label {
+          label: "Ready to record";
+
+          styles ["dim-label"]
+        }
+
+        Gtk.ScrolledWindow {
+          vexpand: true;
+          min-content-height: 200;
+
+          Gtk.ListBox track_list {
+            selection-mode: none;
+
+            styles ["boxed-list"]
+          }
+        }
+      }
+    };
+  }
+}
+
+menu primary_menu {
+  section {
+    item {
+      label: _("New Project");
+      action: "win.new_project";
+    }
+    item {
+      label: _("Open Project…");
+      action: "win.open_project";
+    }
+    item {
+      label: _("Save Project");
+      action: "win.save_project";
+    }
+    item {
+      label: _("Save Project As…");
+      action: "win.save_project_as";
+    }
+  }
+
+  section {
+    item {
+      label: _("Import Audio…");
+      action: "win.import_audio";
+    }
+  }
+
+  section {
+    item {
+      label: _("Export Tracks…");
+      action: "win.export_tracks";
+    }
+    item {
+      label: _("Export Mixed…");
+      action: "win.export_mixed";
+    }
+    item {
+      label: _("Export All…");
+      action: "win.export_all";
+    }
+  }
+
+  section {
+    item {
+      label: _("Help");
+      action: "win.show_help";
+    }
+    item {
+      label: _("Keyboard Shortcuts");
+      action: "win.show_shortcuts";
+    }
+    item {
+      label: _("About Audio Recorder");
+      action: "win.about";
+    }
+  }
+}
+

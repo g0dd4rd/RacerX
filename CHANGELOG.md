@@ -72,11 +72,22 @@ All notable changes to Audio Recorder are documented in this file.
 - **Deleted tracks persisting** — Fixed issue where deleted track audio files remained in project folder
 - **Playback restart issue** — Fixed pause/resume starting from beginning instead of paused position
 
+### Architecture
+
+- **Blueprint UI files** — Refactored to use Blueprint/GTK Builder for UI definitions
+  - `data/ui/window.blp` — Main window layout
+  - `data/ui/track-row.blp` — Track row widget
+  - Compiled to `.ui` XML files at build time
+- **Template-based widgets** — `AudioRecorderWindow` and `TrackRow` use `@Gtk.Template` decorators
+- **Separation of concerns** — UI structure in Blueprint files, logic in Python
+- **Build script** — `build-ui.sh` compiles Blueprint to UI files
+
 ### Technical Details
 
 - Built with GTK 4.0 and libadwaita 1.0
 - Uses GStreamer for audio playback with pause/resume support
 - Uses PipeWire (`pw-record`) for audio recording
+- Uses Blueprint for UI definitions (GNOME standard)
 - Project files use JSON format (`.atr` extension)
 - Audio stored as WAV files in project's `audio/` subdirectory
 - Configuration stored in `~/.config/audio-recorder/config.json`

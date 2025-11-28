@@ -106,6 +106,12 @@ yelp help/C/index.page
 
 ```
 audio_recorder.py    # Main application
+data/
+  ui/                # UI definition files
+    window.blp       # Main window (Blueprint source)
+    window.ui        # Main window (compiled XML)
+    track-row.blp    # Track row widget (Blueprint source)
+    track-row.ui     # Track row widget (compiled XML)
 help/
   C/                 # English documentation (Mallard format)
     index.page
@@ -118,9 +124,33 @@ help/
     import-export.page
     shortcuts.page
     troubleshooting.page
+build-ui.sh          # Script to compile Blueprint files
 HELP.md              # Markdown documentation (fallback)
 README.md            # This file
 CHANGELOG.md         # Version history
+```
+
+## Development
+
+### UI Files
+
+The UI is defined using GTK Builder XML files (`.ui`), with Blueprint source files (`.blp`) provided for easier editing.
+
+To edit the UI:
+1. Edit the `.blp` files in `data/ui/`
+2. Run `./build-ui.sh` to compile to `.ui` files
+3. The application loads the `.ui` files at runtime
+
+Blueprint compiler installation:
+```bash
+# Fedora
+sudo dnf install blueprint-compiler
+
+# Ubuntu/Debian  
+sudo apt install blueprint-compiler
+
+# Arch
+sudo pacman -S blueprint-compiler
 ```
 
 ## Changelog

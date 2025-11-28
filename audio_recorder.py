@@ -18,6 +18,8 @@ class Track:
         self.temp_file = temp_file
         self.recording = False
         self.record_process = None
+        self.playing = False
+        self.play_process = None
 
 class AudioRecorderApp(Adw.Application):
     def __init__(self):
@@ -108,8 +110,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         self.set_title("Audio Recorder")
         self.set_default_size(500, 450)
         
-        self.playing_track = None
-        self.play_process = None
+        self.playing_tracks = set()  # Set of currently playing TrackRow objects
         self.monitor_latency = '64'  # Latency in samples for monitoring
         
         # Header bar
@@ -606,64 +607,70 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
     def on_track_play(self, row):
         track = row.track
         
-        if self.playing_track == row:
-            # Stop current playback
-            if self.play_process:
-                self.play_process.terminate()
-                self.play_process.wait()
-                self.play_process = None
-            self.playing_track.set_playing(False)
-            self.playing_track = None
+        if track.playing:
+            # Stop this track's playback
+            if track.play_process:
+                track.play_process.terminate()
+                track.play_process.wait()
+                track.play_process = None
+            track.playing = False
+            row.set_playing(False)
+            self.playing_tracks.discard(row)
         else:
-            # Stop any other playing track
-            if self.playing_track:
-                if self.play_process:
-                    self.play_process.terminate()
-                    self.play_process.wait()
-                    self.play_process = None
-                self.playing_track.set_playing(False)
-            
-            # Start playback
+            # Start playback for this track
             if track.temp_file and os.path.exists(track.temp_file):
                 try:
-                    self.play_process = subprocess.Popen([
+                    track.play_process = subprocess.Popen([
                         'pw-play',
                         track.temp_file
                     ])
                     
-                    self.playing_track = row
+                    track.playing = True
                     row.set_playing(True)
+                    self.playing_tracks.add(row)
                     
-                    # Monitor process completion
-                    GLib.timeout_add(100, self.check_playback_finished)
+                    # Monitor process completion (only start if not already monitoring)
+                    if len(self.playing_tracks) == 1:
+                        GLib.timeout_add(100, self.check_playback_finished)
                     
                 except Exception as e:
                     self.show_error_dialog(f"Failed to play track: {str(e)}")
     
     def check_playback_finished(self):
-        if self.play_process and self.play_process.poll() is not None:
-            # Playback finished
-            self.play_process = None
-            if self.playing_track:
-                self.playing_track.set_playing(False)
-                self.playing_track = None
-            return False
-        return self.play_process is not None
+        # Check all playing tracks for completion
+        finished_tracks = []
+        for row in self.playing_tracks:
+            track = row.track
+            if track.play_process and track.play_process.poll() is not None:
+                # This track's playback finished
+                track.play_process = None
+                track.playing = False
+                row.set_playing(False)
+                finished_tracks.append(row)
+        
+        # Remove finished tracks from the set
+        for row in finished_tracks:
+            self.playing_tracks.discard(row)
+        
+        # Continue monitoring if there are still playing tracks
+        return len(self.playing_tracks) > 0
     
     def on_track_delete(self, row):
         app = self.get_application()
         track = row.track
         
-        # Stop if recording or playing
+        # Stop if recording
         if track.recording and track.record_process:
             track.record_process.terminate()
             track.record_process.wait()
         
-        if self.playing_track == row:
-            if self.play_process:
-                self.play_process.terminate()
-                self.play_process.wait()
-            self.playing_track = None
+        # Stop if playing
+        if track.playing and track.play_process:
+            track.play_process.terminate()
+            track.play_process.wait()
+            track.play_process = None
+            track.playing = False
+            self.playing_tracks.discard(row)
         
         # Remove temp file
         if track.temp_file and os.path.exists(track.temp_file):

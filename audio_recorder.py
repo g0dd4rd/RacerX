@@ -289,6 +289,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         # Help section
         help_section = Gio.Menu()
         help_section.append("Keyboard Shortcuts", "win.show_shortcuts")
+        help_section.append("About Audio Recorder", "win.about")
         menu.append_section(None, help_section)
         
         menu_button.set_menu_model(menu)
@@ -423,6 +424,11 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         # Show Keyboard Shortcuts
         action = Gio.SimpleAction.new("show_shortcuts", None)
         action.connect("activate", self.on_show_shortcuts)
+        self.add_action(action)
+        
+        # About
+        action = Gio.SimpleAction.new("about", None)
+        action.connect("activate", self.on_about)
         self.add_action(action)
     
     def on_new_project(self, action, param):
@@ -1332,7 +1338,6 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         # Main section
         section = Gtk.ShortcutsSection(section_name="shortcuts", title="Shortcuts")
         section.set_visible(True)
-        section.set_max_height(10)
         
         # Project group
         project_group = Gtk.ShortcutsGroup(title="Project")
@@ -1405,6 +1410,23 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         
         shortcuts_window.add_section(section)
         shortcuts_window.present()
+    
+    def on_about(self, action, param):
+        """Show the About dialog"""
+        about = Adw.AboutDialog(
+            application_name="Audio Recorder",
+            application_icon="audio-input-microphone-symbolic",
+            version="1.0",
+            developer_name="Audio Recorder Team",
+            copyright="© 2024 Audio Recorder Team",
+            license_type=Gtk.License.GPL_3_0,
+            comments="A simple multi-track audio recorder for GNOME\n\nPowered by GStreamer, PipeWire, GTK4, and libadwaita",
+            website="https://github.com/example/audio-recorder",
+            developers=[
+                "Audio Recorder Team"
+            ],
+        )
+        about.present(self)
     
     def show_error_dialog(self, message):
         dialog = Adw.AlertDialog(heading="Error", body=message)

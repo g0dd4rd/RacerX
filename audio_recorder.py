@@ -1050,15 +1050,35 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         
         if app.monitoring and app.monitor_process:
             record_proc, play_proc = app.monitor_process
-            record_proc.terminate()
-            play_proc.terminate()
+            
+            # Terminate both processes
+            try:
+                record_proc.terminate()
+            except:
+                pass
+            try:
+                play_proc.terminate()
+            except:
+                pass
+            
+            # Wait for them to finish
+            try:
+                record_proc.wait(timeout=2)
+            except:
+                try:
+                    record_proc.kill()
+                    record_proc.wait(timeout=1)
+                except:
+                    pass
             
             try:
-                record_proc.wait(timeout=1)
-                play_proc.wait(timeout=1)
+                play_proc.wait(timeout=2)
             except:
-                record_proc.kill()
-                play_proc.kill()
+                try:
+                    play_proc.kill()
+                    play_proc.wait(timeout=1)
+                except:
+                    pass
             
             app.monitor_process = None
             app.monitoring = False
@@ -1149,7 +1169,44 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         if self.has_unsaved_changes():
             self.show_close_confirmation_dialog()
             return True
+        # Clean up all processes before closing
+        self.cleanup_all_processes()
         return False
+    
+    def cleanup_all_processes(self):
+        """Clean up all running processes and pipelines before exit"""
+        app = self.get_application()
+        
+        # Stop monitoring
+        self.stop_monitoring()
+        
+        # Stop all playback
+        self.stop_all_playback()
+        
+        # Stop all recording processes and clean up GStreamer pipelines
+        for track in app.tracks:
+            # Stop recording
+            if track.recording and track.record_process:
+                try:
+                    track.record_process.terminate()
+                    track.record_process.wait(timeout=2)
+                except:
+                    try:
+                        track.record_process.kill()
+                    except:
+                        pass
+                track.record_process = None
+                track.recording = False
+            
+            # Clean up GStreamer pipeline
+            if track.pipeline:
+                try:
+                    track.pipeline.set_state(Gst.State.NULL)
+                except:
+                    pass
+                track.pipeline = None
+                track.playing = False
+                track.paused = False
     
     def show_close_confirmation_dialog(self):
         dialog = Adw.AlertDialog(
@@ -1171,6 +1228,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             app = self.get_application()
             if app.project_file:
                 self.save_project(app.project_file)
+                self.cleanup_all_processes()
                 self.destroy()
             else:
                 self.pending_close = True
@@ -1179,6 +1237,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                 save_dialog.set_initial_name("project")
                 save_dialog.save(self, None, self.on_save_before_close_response)
         elif response == "discard":
+            self.cleanup_all_processes()
             self.destroy()
     
     def on_save_before_close_response(self, dialog, result):
@@ -1186,6 +1245,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             file = dialog.save_finish(result)
             if file:
                 self.save_project(file.get_path())
+                self.cleanup_all_processes()
                 self.destroy()
         except Exception as e:
             if "dismissed" not in str(e).lower():

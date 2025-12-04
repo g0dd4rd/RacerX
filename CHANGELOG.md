@@ -61,6 +61,7 @@ All notable changes to Audio Recorder are documented in this file.
 ### Changed
 
 - **Playback engine** — Switched from `pw-play` subprocess to GStreamer for proper pause/resume support
+- **Audio mixing** — Replaced naive byte-level mixing with GStreamer `audiomixer` for professional quality exports
 - **Global play button** — Now toggles between play and pause states
 - **Monitoring shortcut** — Changed from `Ctrl+Shift+M` to `Ctrl+L` to avoid potential conflicts
 - **Export shortcuts** — Changed to `Ctrl+Shift+T/X/A` for better consistency

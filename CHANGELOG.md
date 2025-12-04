@@ -72,6 +72,7 @@ All notable changes to Audio Recorder are documented in this file.
 - **Projects nesting on save** — Fixed bug where saving to an existing project created nested folders
 - **Deleted tracks persisting** — Fixed issue where deleted track audio files remained in project folder
 - **Playback restart issue** — Fixed pause/resume starting from beginning instead of paused position
+- **Hanging PipeWire processes** — All recording, playback, and monitoring processes are now properly terminated on application exit
 
 ### Architecture
 

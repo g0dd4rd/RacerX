@@ -9,7 +9,6 @@ import subprocess
 import os
 import tempfile
 from pathlib import Path
-import wave
 import json
 import shutil
 
@@ -602,32 +601,79 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                 self.show_error_dialog(f"Failed to export: {str(e)}")
     
     def mix_tracks(self, output_path):
+        """Mix all tracks using GStreamer audiomixer for proper audio quality"""
         app = self.get_application()
         
         valid_tracks = [t for t in app.tracks if t.temp_file and os.path.exists(t.temp_file)]
         if not valid_tracks:
             return
         
-        wave_data = []
-        params = None
+        # Build GStreamer pipeline for mixing
+        # Pipeline: filesrc ! decodebin ! audioconvert ! audiomixer ! audioconvert ! wavenc ! filesink
         
-        for track in valid_tracks:
-            with wave.open(track.temp_file, 'rb') as wf:
-                if params is None:
-                    params = wf.getparams()
-                frames = wf.readframes(wf.getnframes())
-                wave_data.append(frames)
+        pipeline = Gst.Pipeline.new("mixer")
+        mixer = Gst.ElementFactory.make("audiomixer", "mixer")
+        audioconvert = Gst.ElementFactory.make("audioconvert", "convert")
+        wavenc = Gst.ElementFactory.make("wavenc", "encoder")
+        filesink = Gst.ElementFactory.make("filesink", "sink")
         
-        max_length = max(len(data) for data in wave_data)
+        if not all([mixer, audioconvert, wavenc, filesink]):
+            self.show_error_dialog("Failed to create GStreamer elements for mixing")
+            return
         
-        mixed = bytearray(max_length)
-        for data in wave_data:
-            for i in range(len(data)):
-                mixed[i] = min(255, max(0, mixed[i] + data[i] // len(wave_data)))
+        filesink.set_property("location", output_path)
         
-        with wave.open(output_path, 'wb') as wf:
-            wf.setparams(params)
-            wf.writeframes(bytes(mixed))
+        pipeline.add(mixer)
+        pipeline.add(audioconvert)
+        pipeline.add(wavenc)
+        pipeline.add(filesink)
+        
+        mixer.link(audioconvert)
+        audioconvert.link(wavenc)
+        wavenc.link(filesink)
+        
+        # Add a source for each track
+        for i, track in enumerate(valid_tracks):
+            filesrc = Gst.ElementFactory.make("filesrc", f"source{i}")
+            decodebin = Gst.ElementFactory.make("decodebin", f"decode{i}")
+            convert = Gst.ElementFactory.make("audioconvert", f"convert{i}")
+            resample = Gst.ElementFactory.make("audioresample", f"resample{i}")
+            
+            if not all([filesrc, decodebin, convert, resample]):
+                continue
+            
+            filesrc.set_property("location", track.temp_file)
+            
+            pipeline.add(filesrc)
+            pipeline.add(decodebin)
+            pipeline.add(convert)
+            pipeline.add(resample)
+            
+            filesrc.link(decodebin)
+            convert.link(resample)
+            resample.link(mixer)
+            
+            # Connect decodebin's dynamic pad to audioconvert
+            decodebin.connect("pad-added", self._on_decode_pad_added, convert)
+        
+        # Run the pipeline
+        pipeline.set_state(Gst.State.PLAYING)
+        
+        # Wait for completion
+        bus = pipeline.get_bus()
+        bus.timed_pop_filtered(Gst.CLOCK_TIME_NONE, Gst.MessageType.EOS | Gst.MessageType.ERROR)
+        
+        pipeline.set_state(Gst.State.NULL)
+    
+    def _on_decode_pad_added(self, decodebin, pad, audioconvert):
+        """Handle dynamic pad from decodebin"""
+        caps = pad.get_current_caps()
+        if caps:
+            struct = caps.get_structure(0)
+            if struct.get_name().startswith("audio"):
+                sink_pad = audioconvert.get_static_pad("sink")
+                if not sink_pad.is_linked():
+                    pad.link(sink_pad)
     
     # ==================== Track Management ====================
     

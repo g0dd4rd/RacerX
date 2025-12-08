@@ -50,9 +50,24 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
               </object>
             </child>
             <child type="end">
-              <object class="GtkToggleButton" id="monitor_toggle">
-                <property name="icon-name">audio-volume-high-symbolic</property>
-                <property name="tooltip-text">Toggle input monitoring (Ctrl+L)</property>
+              <object class="GtkBox" id="monitor_box">
+                <property name="orientation">0</property>
+                <style>
+                  <class name="linked"/>
+                </style>
+                <child>
+                  <object class="GtkToggleButton" id="monitor_toggle">
+                    <property name="icon-name">audio-volume-high-symbolic</property>
+                    <property name="tooltip-text">Toggle input monitoring (Ctrl+L)</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkMenuButton" id="latency_menu_btn">
+                    <property name="icon-name">emblem-system-symbolic</property>
+                    <property name="tooltip-text">Monitoring settings</property>
+                    <property name="menu-model">latency_menu</property>
+                  </object>
+                </child>
               </object>
             </child>
           </object>
@@ -97,6 +112,36 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
       </object>
     </child>
   </template>
+  <menu id="latency_menu">
+    <section>
+      <attribute name="label" translatable="yes">Monitoring Latency</attribute>
+      <item>
+        <attribute name="label" translatable="yes">32 samples (lowest)</attribute>
+        <attribute name="action">win.set_latency</attribute>
+        <attribute name="target">32</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">64 samples (low)</attribute>
+        <attribute name="action">win.set_latency</attribute>
+        <attribute name="target">64</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">128 samples (medium)</attribute>
+        <attribute name="action">win.set_latency</attribute>
+        <attribute name="target">128</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">256 samples (high)</attribute>
+        <attribute name="action">win.set_latency</attribute>
+        <attribute name="target">256</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">512 samples (highest)</attribute>
+        <attribute name="action">win.set_latency</attribute>
+        <attribute name="target">512</attribute>
+      </item>
+    </section>
+  </menu>
   <menu id="primary_menu">
     <section>
       <item>

@@ -44,6 +44,7 @@ All notable changes to Audio Recorder are documented in this file.
 - **About dialog** — Added "About Audio Recorder" with app info, credits, and license
 - **Keyboard shortcuts dialog** — View all shortcuts from the menu or with `Ctrl+?`
 - **Help menu integration** — Added Help menu item that opens documentation
+- **Latency settings** — Configurable monitoring latency (32, 64, 128, 256, 512 samples) via dropdown menu
 
 #### Documentation
 - **Mallard documentation** — Full user guide in Yelp-compatible format with:

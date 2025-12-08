@@ -253,6 +253,15 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         self.export_all_action.connect("activate", self.on_export_all)
         self.export_all_action.set_enabled(False)
         self.add_action(self.export_all_action)
+        
+        # Latency action (stateful with string parameter)
+        latency_action = Gio.SimpleAction.new_stateful(
+            "set_latency",
+            GLib.VariantType.new("s"),
+            GLib.Variant.new_string(self.monitor_latency)
+        )
+        latency_action.connect("activate", self.on_set_latency)
+        self.add_action(latency_action)
     
     def load_recent_or_new_project(self):
         """Load the most recent project if available, otherwise create a new one"""
@@ -1009,13 +1018,26 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
     def on_monitor_toggled(self, button):
         if button.get_active():
             self.start_monitoring()
-            self.status_label.set_label("Monitoring active")
+            self.status_label.set_label(f"Monitoring active (latency: {self.monitor_latency} samples)")
         else:
             self.stop_monitoring()
             self.status_label.set_label("Ready to record")
     
     def on_toggle_monitoring_action(self, action, param):
         self.monitor_toggle.set_active(not self.monitor_toggle.get_active())
+    
+    def on_set_latency(self, action, param):
+        """Set the monitoring latency"""
+        new_latency = param.get_string()
+        self.monitor_latency = new_latency
+        action.set_state(param)
+        
+        # If monitoring is active, restart it with new latency
+        app = self.get_application()
+        if app.monitoring:
+            self.stop_monitoring()
+            self.start_monitoring()
+            self.status_label.set_label(f"Monitoring active (latency: {new_latency} samples)")
     
     def start_monitoring(self):
         app = self.get_application()

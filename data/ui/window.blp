@@ -42,9 +42,21 @@ template $AudioRecorderWindow : Adw.ApplicationWindow {
       }
 
       [end]
-      Gtk.ToggleButton monitor_toggle {
-        icon-name: "audio-volume-high-symbolic";
-        tooltip-text: "Toggle input monitoring (Ctrl+L)";
+      Gtk.Box monitor_box {
+        orientation: horizontal;
+        
+        styles ["linked"]
+        
+        Gtk.ToggleButton monitor_toggle {
+          icon-name: "audio-volume-high-symbolic";
+          tooltip-text: "Toggle input monitoring (Ctrl+L)";
+        }
+        
+        Gtk.MenuButton latency_menu_btn {
+          icon-name: "emblem-system-symbolic";
+          tooltip-text: "Monitoring settings";
+          menu-model: latency_menu;
+        }
       }
     }
 
@@ -77,6 +89,38 @@ template $AudioRecorderWindow : Adw.ApplicationWindow {
         }
       }
     };
+  }
+}
+
+menu latency_menu {
+  section {
+    label: _("Monitoring Latency");
+    
+    item {
+      label: _("32 samples (lowest)");
+      action: "win.set_latency";
+      target: "32";
+    }
+    item {
+      label: _("64 samples (low)");
+      action: "win.set_latency";
+      target: "64";
+    }
+    item {
+      label: _("128 samples (medium)");
+      action: "win.set_latency";
+      target: "128";
+    }
+    item {
+      label: _("256 samples (high)");
+      action: "win.set_latency";
+      target: "256";
+    }
+    item {
+      label: _("512 samples (highest)");
+      action: "win.set_latency";
+      target: "512";
+    }
   }
 }
 

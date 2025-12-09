@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.gnome.AudioRecorder</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  
+  <name>Audio Recorder</name>
+  <summary>Record and mix multiple audio tracks</summary>
+  
+  <description>
+    <p>
+      Audio Recorder is a simple multi-track audio recorder for GNOME. 
+      Record multiple audio tracks, play them back together, and export 
+      your recordings as individual files or mixed audio.
+    </p>
+    <p>Features include:</p>
+    <ul>
+      <li>Multi-track recording with independent track control</li>
+      <li>Simultaneous playback of all tracks</li>
+      <li>True pause/resume without losing position</li>
+      <li>Track muting for preview mixing</li>
+      <li>Real-time input monitoring with configurable latency</li>
+      <li>Project save/load for session management</li>
+      <li>Import WAV files and export individual or mixed audio</li>
+      <li>Full keyboard navigation with accessibility-friendly shortcuts</li>
+    </ul>
+  </description>
+  
+  <launchable type="desktop-id">org.gnome.AudioRecorder.desktop</launchable>
+  
+  <url type="homepage">https://github.com/g0dd4rd/RacerX</url>
+  <url type="bugtracker">https://github.com/g0dd4rd/RacerX/issues</url>
+  
+  <developer_name>Audio Recorder Team</developer_name>
+  
+  <provides>
+    <binary>audio-recorder</binary>
+  </provides>
+  
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </recommends>
+  
+  <categories>
+    <category>AudioVideo</category>
+    <category>Audio</category>
+    <category>Recorder</category>
+  </categories>
+  
+  <keywords>
+    <keyword>audio</keyword>
+    <keyword>record</keyword>
+    <keyword>recording</keyword>
+    <keyword>sound</keyword>
+    <keyword>music</keyword>
+    <keyword>podcast</keyword>
+    <keyword>voice</keyword>
+    <keyword>multitrack</keyword>
+  </keywords>
+  
+  <!-- Screenshots can be added later:
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main window with multiple tracks</caption>
+      <image>https://raw.githubusercontent.com/g0dd4rd/RacerX/main/data/screenshots/main-window.png</image>
+    </screenshot>
+  </screenshots>
+  -->
+  
+  <releases>
+    <release version="1.0.0" date="2025-12-08">
+      <description>
+        <p>Initial release with full feature set:</p>
+        <ul>
+          <li>Multi-track recording and playback</li>
+          <li>GStreamer-based audio mixing</li>
+          <li>Blueprint UI for modern GNOME integration</li>
+          <li>Configurable monitoring latency</li>
+          <li>Comprehensive keyboard shortcuts</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+  
+  <content_rating type="oars-1.1" />
+</component>
+

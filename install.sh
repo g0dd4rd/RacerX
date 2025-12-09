@@ -15,6 +15,9 @@ mkdir -p "$APP_DIR"
 mkdir -p "$DESKTOP_DIR"
 mkdir -p "$ICON_DIR"
 
+# Copy icon
+cp "$SCRIPT_DIR/data/icons/hicolor/scalable/apps/org.gnome.AudioRecorder.svg" "$ICON_DIR/"
+
 # Copy application files
 cp "$SCRIPT_DIR/audio_recorder.py" "$APP_DIR/"
 cp -r "$SCRIPT_DIR/data" "$APP_DIR/"
@@ -31,7 +34,7 @@ Name=Audio Recorder
 GenericName=Audio Recorder
 Comment=Record and mix multiple audio tracks
 Keywords=audio;record;recording;sound;music;podcast;voice;
-Icon=audio-input-microphone
+Icon=org.gnome.AudioRecorder
 Exec=python3 $APP_DIR/audio_recorder.py
 Terminal=false
 Categories=AudioVideo;Audio;Recorder;

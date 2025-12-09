@@ -37,7 +37,7 @@ class Track:
 
 class AudioRecorderApp(Adw.Application):
     def __init__(self):
-        super().__init__(application_id='com.example.audiorecorder')
+        super().__init__(application_id='org.gnome.AudioRecorder')
         self.monitoring = False
         self.monitor_process = None
         self.tracks = []
@@ -1169,7 +1169,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
     def on_about(self, action, param):
         about = Adw.AboutDialog(
             application_name="Audio Recorder",
-            application_icon="audio-input-microphone-symbolic",
+            application_icon="org.gnome.AudioRecorder",
             version="1.0",
             developer_name="Audio Recorder Team",
             copyright="© 2024 Audio Recorder Team",

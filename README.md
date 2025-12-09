@@ -47,6 +47,21 @@ sudo pacman -S gtk4 libadwaita python-gobject gstreamer pipewire
 
 ## Installation
 
+### Flatpak (Recommended)
+
+Build and install as a Flatpak:
+
+```bash
+cd flatpak
+./build-flatpak.sh
+```
+
+Run the Flatpak:
+
+```bash
+flatpak run org.gnome.AudioRecorder
+```
+
 ### Install as Desktop Application
 
 To install Audio Recorder so it appears in your GNOME application menu:
@@ -130,7 +145,12 @@ data/
     window.ui        # Main window (compiled XML)
     track-row.blp    # Track row widget (Blueprint source)
     track-row.ui     # Track row widget (compiled XML)
-  org.gnome.AudioRecorder.desktop  # Desktop entry template
+  org.gnome.AudioRecorder.desktop   # Desktop entry
+  org.gnome.AudioRecorder.metainfo.xml  # AppStream metadata
+flatpak/
+  org.gnome.AudioRecorder.json  # Flatpak manifest
+  build-flatpak.sh   # Flatpak build script
+  audio-recorder     # Flatpak launcher script
 help/
   C/                 # English documentation (Mallard format)
     index.page

@@ -16,8 +16,11 @@ import shutil
 Gst.init(None)
 
 # Get the directory where this script is located
+# Support Flatpak environment via AUDIO_RECORDER_DATA_DIR
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-UI_DIR = os.path.join(SCRIPT_DIR, 'data', 'ui')
+DATA_DIR = os.environ.get('AUDIO_RECORDER_DATA_DIR', os.path.join(SCRIPT_DIR, 'data'))
+UI_DIR = os.path.join(DATA_DIR, 'ui')
+HELP_DIR = os.path.join(DATA_DIR, 'help', 'C')
 
 
 class Track:
@@ -1153,12 +1156,9 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         shortcuts_window.present()
     
     def on_show_help(self, action, param):
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        help_dir = os.path.join(script_dir, "help", "C")
-        
-        if os.path.exists(help_dir):
+        if os.path.exists(HELP_DIR):
             try:
-                subprocess.Popen(["yelp", os.path.join(help_dir, "index.page")])
+                subprocess.Popen(["yelp", os.path.join(HELP_DIR, "index.page")])
             except FileNotFoundError:
                 self.show_error_dialog("Yelp is not installed. Please install yelp to view help.")
             except Exception as e:
@@ -1175,7 +1175,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             copyright="© 2024 Audio Recorder Team",
             license_type=Gtk.License.GPL_3_0,
             comments="A simple multi-track audio recorder for GNOME\n\nPowered by GStreamer, PipeWire, GTK4, and libadwaita",
-            website="https://github.com/example/audio-recorder",
+            website="https://github.com/g0dd4rd/RacerX",
             developers=["Audio Recorder Team"],
         )
         about.present(self)

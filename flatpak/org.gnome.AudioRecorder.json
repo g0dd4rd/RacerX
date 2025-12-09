@@ -1,7 +1,7 @@
 {
     "app-id": "org.gnome.AudioRecorder",
     "runtime": "org.gnome.Platform",
-    "runtime-version": "46",
+    "runtime-version": "48",
     "sdk": "org.gnome.Sdk",
     "command": "audio-recorder",
     "finish-args": [
@@ -10,8 +10,7 @@
         "--socket=wayland",
         "--socket=pulseaudio",
         "--device=dri",
-        "--filesystem=home",
-        "--talk-name=org.freedesktop.Flatpak"
+        "--filesystem=home"
     ],
     "cleanup": [
         "/include",
@@ -21,27 +20,15 @@
     ],
     "modules": [
         {
-            "name": "blueprint-compiler",
-            "buildsystem": "meson",
-            "sources": [
-                {
-                    "type": "git",
-                    "url": "https://gitlab.gnome.org/jwestman/blueprint-compiler.git",
-                    "tag": "v0.14.0"
-                }
-            ]
-        },
-        {
             "name": "audio-recorder",
             "buildsystem": "simple",
             "build-commands": [
                 "install -D audio_recorder.py /app/bin/audio_recorder.py",
-                "install -D data/ui/window.blp /app/share/audio-recorder/ui/window.blp",
-                "install -D data/ui/track-row.blp /app/share/audio-recorder/ui/track-row.blp",
-                "blueprint-compiler compile data/ui/window.blp --output /app/share/audio-recorder/ui/window.ui",
-                "blueprint-compiler compile data/ui/track-row.blp --output /app/share/audio-recorder/ui/track-row.ui",
+                "install -D data/ui/window.ui /app/share/audio-recorder/ui/window.ui",
+                "install -D data/ui/track-row.ui /app/share/audio-recorder/ui/track-row.ui",
                 "install -Dm644 data/org.gnome.AudioRecorder.desktop /app/share/applications/org.gnome.AudioRecorder.desktop",
                 "install -Dm644 data/org.gnome.AudioRecorder.metainfo.xml /app/share/metainfo/org.gnome.AudioRecorder.metainfo.xml",
+                "install -Dm644 data/icons/hicolor/scalable/apps/org.gnome.AudioRecorder.svg /app/share/icons/hicolor/scalable/apps/org.gnome.AudioRecorder.svg",
                 "install -d /app/share/audio-recorder/help",
                 "cp -r help/C /app/share/audio-recorder/help/",
                 "install -D flatpak/audio-recorder /app/bin/audio-recorder"

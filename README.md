@@ -45,10 +45,28 @@ sudo apt install libgtk-4-1 libadwaita-1-0 python3-gi gstreamer1.0-tools pipewir
 sudo pacman -S gtk4 libadwaita python-gobject gstreamer pipewire
 ```
 
-## Usage
+## Installation
+
+### Install as Desktop Application
+
+To install Audio Recorder so it appears in your GNOME application menu:
 
 ```bash
-./audio_recorder.py
+./install.sh
+```
+
+This installs the application to `~/.local/share/audio-recorder/` and creates a desktop entry.
+
+To uninstall:
+
+```bash
+./uninstall.sh
+```
+
+### Run Without Installing
+
+```bash
+python3 audio_recorder.py
 ```
 
 Or make it executable:
@@ -112,6 +130,7 @@ data/
     window.ui        # Main window (compiled XML)
     track-row.blp    # Track row widget (Blueprint source)
     track-row.ui     # Track row widget (compiled XML)
+  org.gnome.AudioRecorder.desktop  # Desktop entry template
 help/
   C/                 # English documentation (Mallard format)
     index.page
@@ -124,6 +143,8 @@ help/
     import-export.page
     shortcuts.page
     troubleshooting.page
+install.sh           # Install script (adds to application menu)
+uninstall.sh         # Uninstall script
 build-ui.sh          # Script to compile Blueprint files
 HELP.md              # Markdown documentation (fallback)
 README.md            # This file

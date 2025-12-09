@@ -10,6 +10,7 @@ All notable changes to Audio Recorder are documented in this file, organized by 
 - **Latency settings UI** — Configurable monitoring latency (32, 64, 128, 256, 512 samples) via dropdown menu next to monitoring toggle
 - **Desktop integration** — `.desktop` file for GNOME application menu integration
 - **Install/Uninstall scripts** — Easy installation to `~/.local/share/` with `install.sh` and `uninstall.sh`
+- **Flatpak support** — Full Flatpak packaging with manifest, AppStream metadata, and build script
 
 ### Changed
 - **Audio mixing engine** — Replaced naive byte-level mixing with GStreamer `audiomixer` for professional quality exports

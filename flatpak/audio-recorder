@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+import sys
+import os
+
+# Set up paths for Flatpak environment
+app_dir = '/app/share/audio-recorder'
+os.environ['AUDIO_RECORDER_DATA_DIR'] = app_dir
+
+# Import and run the application
+sys.path.insert(0, '/app/bin')
+from audio_recorder import main
+main()
+

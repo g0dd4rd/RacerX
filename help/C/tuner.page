@@ -1,0 +1,65 @@
+<page xmlns="http://projectmallard.org/1.0/"
+      type="topic"
+      id="tuner">
+  <info>
+    <link type="guide" xref="index#advanced"/>
+    <desc>Tune your bass or guitar with the built-in chromatic tuner</desc>
+  </info>
+
+  <title>Chromatic Tuner</title>
+
+  <p>Audio Recorder includes a chromatic tuner for tuning any instrument. It automatically detects the pitch you're playing and shows how close you are to the nearest note.</p>
+
+  <section id="opening">
+    <title>Opening the Tuner</title>
+    <p>You can open the tuner in two ways:</p>
+    <list>
+      <item><p>From the menu: Click the menu button and select <gui>Chromatic Tuner</gui></p></item>
+      <item><p>Keyboard shortcut: Press <keyseq><key>Ctrl</key><key>U</key></keyseq></p></item>
+    </list>
+    <p>The tuner starts listening automatically when you open it.</p>
+  </section>
+
+  <section id="using">
+    <title>Using the Tuner</title>
+    <steps>
+      <item><p>Open the tuner (it starts automatically)</p></item>
+      <item><p>Play a note on your instrument</p></item>
+      <item><p>Watch the display - it shows the detected note, octave, and frequency</p></item>
+      <item><p>The indicator bar shows if you're flat (left) or sharp (right)</p></item>
+      <item><p>Aim for the center - when the note turns green, you're in tune!</p></item>
+    </steps>
+  </section>
+
+  <section id="indicators">
+    <title>Understanding the Display</title>
+    <terms>
+      <item>
+        <title>Note Display</title>
+        <p>Shows the detected note name (C, C#, D, D#, E, F, F#, G, G#, A, A#, B) in large text. Green means in tune, orange means close, red means far off.</p>
+      </item>
+      <item>
+        <title>Cents Display</title>
+        <p>Shows how many cents sharp (+) or flat (-) you are. ±5 cents is considered in tune.</p>
+      </item>
+      <item>
+        <title>Pitch Bar</title>
+        <p>Visual indicator - center is in tune, left is flat, right is sharp.</p>
+      </item>
+      <item>
+        <title>Status</title>
+        <p>Text feedback telling you if you're in tune or which direction to adjust.</p>
+      </item>
+    </terms>
+  </section>
+
+  <section id="tips">
+    <title>Tips for Accurate Tuning</title>
+    <list>
+      <item><p>Play the note cleanly and let it ring</p></item>
+      <item><p>Avoid background noise for best detection</p></item>
+      <item><p>For bass, low notes may need a moment to stabilize</p></item>
+      <item><p>Use harmonics for even more accurate tuning</p></item>
+    </list>
+  </section>
+</page>

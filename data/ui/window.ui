@@ -169,6 +169,12 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
     </section>
     <section>
       <item>
+        <attribute name="label" translatable="yes">Chromatic Tuner</attribute>
+        <attribute name="action">win.show_tuner</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
         <attribute name="label" translatable="yes">Export Tracks…</attribute>
         <attribute name="action">win.export_tracks</attribute>
       </item>

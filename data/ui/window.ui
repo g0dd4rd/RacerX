@@ -50,6 +50,15 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
               </object>
             </child>
             <child type="end">
+              <object class="GtkButton" id="tuner_btn">
+                <property name="icon-name">tuning-fork-symbolic</property>
+                <property name="tooltip-text">Chromatic Tuner (Ctrl+U)</property>
+                <style>
+                  <class name="flat"/>
+                </style>
+              </object>
+            </child>
+            <child type="end">
               <object class="GtkBox" id="monitor_box">
                 <property name="orientation">0</property>
                 <style>

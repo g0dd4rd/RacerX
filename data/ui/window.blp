@@ -42,6 +42,14 @@ template $AudioRecorderWindow : Adw.ApplicationWindow {
       }
 
       [end]
+      Gtk.Button tuner_btn {
+        icon-name: "tuning-fork-symbolic";
+        tooltip-text: "Chromatic Tuner (Ctrl+U)";
+        
+        styles ["flat"]
+      }
+
+      [end]
       Gtk.Box monitor_box {
         orientation: horizontal;
         

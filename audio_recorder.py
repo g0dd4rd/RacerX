@@ -11,6 +11,8 @@ import tempfile
 from pathlib import Path
 import json
 import shutil
+import numpy as np
+import math
 
 # Initialize GStreamer
 Gst.init(None)
@@ -33,6 +35,607 @@ class Track:
         self.paused = False
         self.muted = False
         self.pipeline = None  # GStreamer pipeline for playback
+
+
+# ==================== Chromatic Tuner ====================
+
+# Note frequencies (A4 = 440Hz standard)
+NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
+
+
+def freq_to_note(frequency):
+    """Convert frequency to nearest note name, octave, and cents deviation"""
+    if frequency <= 0:
+        return None, None, 0
+    
+    # A4 = 440Hz is our reference (A in octave 4)
+    A4 = 440.0
+    
+    # Calculate semitones from A4
+    semitones_from_a4 = 12 * math.log2(frequency / A4)
+    
+    # Round to nearest semitone
+    nearest_semitone = round(semitones_from_a4)
+    
+    # Calculate cents deviation (100 cents = 1 semitone)
+    cents = (semitones_from_a4 - nearest_semitone) * 100
+    
+    # A4 is index 9 (A) in octave 4, so A4 = 4*12 + 9 = 57 semitones from C0
+    # C0 is 48 semitones below A4
+    absolute_semitone = nearest_semitone + 57  # 57 = 4*12 + 9
+    
+    # Get note and octave
+    note_index = absolute_semitone % 12
+    octave = absolute_semitone // 12
+    
+    note_name = NOTE_NAMES[note_index]
+    
+    return note_name, octave, cents
+
+
+class TunerGauge(Gtk.DrawingArea):
+    """Custom gauge widget for tuner display - Accessible GNOME/Adwaita style"""
+    
+    def __init__(self):
+        super().__init__()
+        self.cents = 0  # -50 to +50
+        self.note_name = "—"
+        self.octave = ""
+        self.frequency = 0
+        self.in_tune = False
+        self.has_signal = False
+        
+        # Smooth needle animation
+        self.display_cents = 0
+        
+        self.set_content_width(420)
+        self.set_content_height(320)
+        self.set_draw_func(self._draw)
+    
+    def set_tuning(self, note_name, octave, cents, frequency, has_signal):
+        """Update the gauge with new tuning data"""
+        self.note_name = note_name if note_name else "—"
+        self.octave = str(octave) if octave is not None else ""
+        self.cents = max(-50, min(50, cents))
+        self.frequency = frequency
+        self.in_tune = abs(cents) < 5 if has_signal else False
+        self.has_signal = has_signal
+        
+        # Smooth needle movement
+        if has_signal:
+            self.display_cents = self.display_cents * 0.3 + self.cents * 0.7
+        else:
+            self.display_cents = 0
+        
+        self.queue_draw()
+    
+    def _draw(self, area, cr, width, height):
+        """Draw the gauge with accessible high-contrast design"""
+        import cairo
+        
+        # HIGH CONTRAST colors for accessibility
+        # Using WCAG 2.1 compliant contrast ratios
+        
+        # Dark background for guaranteed contrast
+        bg_color = (0.12, 0.12, 0.14)         # Very dark gray/black
+        
+        # Bright, saturated colors for maximum visibility
+        green_color = (0.0, 0.95, 0.5)        # Bright green - in tune
+        yellow_color = (1.0, 0.9, 0.0)        # Bright yellow - close
+        red_color = (1.0, 0.3, 0.3)           # Bright red - off
+        
+        # High contrast text - pure white for maximum readability
+        text_bright = (1.0, 1.0, 1.0)         # Pure white
+        text_secondary = (0.9, 0.9, 0.9)      # Near white
+        bar_bg = (0.25, 0.25, 0.28)           # Dark gray for gauge background
+        
+        # === DRAW DARK BACKGROUND ===
+        cr.set_source_rgb(*bg_color)
+        self._rounded_rect(cr, 0, 0, width, height, 12)
+        cr.fill()
+        
+        # Layout - generous spacing for readability
+        cx = width / 2
+        margin = 25
+        
+        # === LARGE NOTE DISPLAY AT TOP ===
+        note_y = 85
+        
+        cr.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        cr.set_font_size(80)  # Very large for visibility
+        
+        # Note color based on tuning state - always high contrast
+        if self.in_tune:
+            cr.set_source_rgb(*green_color)
+        elif self.has_signal:
+            if abs(self.cents) < 20:
+                cr.set_source_rgb(*yellow_color)
+            else:
+                cr.set_source_rgb(*red_color)
+        else:
+            cr.set_source_rgb(*text_bright)  # White when no signal
+        
+        note_text = self.note_name
+        extents = cr.text_extents(note_text)
+        note_x = cx - extents.width / 2
+        cr.move_to(note_x, note_y)
+        cr.show_text(note_text)
+        
+        # Octave number (large, next to note)
+        if self.octave and self.has_signal:
+            cr.set_font_size(40)
+            cr.move_to(note_x + extents.width + 5, note_y)
+            cr.show_text(self.octave)
+        
+        # === FREQUENCY DISPLAY ===
+        cr.set_font_size(22)
+        cr.set_source_rgb(*text_bright)  # White for visibility
+        cr.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+        
+        if self.has_signal and self.frequency > 0:
+            freq_text = f"{self.frequency:.1f} Hz"
+        else:
+            freq_text = "Play a note"
+        
+        extents = cr.text_extents(freq_text)
+        cr.move_to(cx - extents.width / 2, note_y + 35)
+        cr.show_text(freq_text)
+        
+        # === GAUGE BAR ===
+        bar_x = margin
+        bar_width = width - 2 * margin
+        bar_y = 165
+        bar_height = 24  # Thicker bar for visibility
+        
+        # Gauge background
+        cr.set_source_rgb(*bar_bg)
+        self._rounded_rect(cr, bar_x, bar_y, bar_width, bar_height, 6)
+        cr.fill()
+        
+        # Helper function
+        def cents_to_x(c):
+            return bar_x + (c + 50) / 100 * bar_width
+        
+        # Draw colored zones with high opacity
+        zone_y = bar_y
+        zone_height = bar_height
+        
+        # Red zone left (-50 to -20)
+        cr.set_source_rgba(*red_color, 0.9)
+        self._rounded_rect(cr, cents_to_x(-50), zone_y, cents_to_x(-20) - cents_to_x(-50), zone_height, 6)
+        cr.fill()
+        
+        # Yellow zone left (-20 to -5)
+        cr.set_source_rgba(*yellow_color, 0.9)
+        cr.rectangle(cents_to_x(-20), zone_y, cents_to_x(-5) - cents_to_x(-20), zone_height)
+        cr.fill()
+        
+        # Green zone center (-5 to +5) - THE TARGET
+        cr.set_source_rgba(*green_color, 1.0)
+        cr.rectangle(cents_to_x(-5), zone_y, cents_to_x(5) - cents_to_x(-5), zone_height)
+        cr.fill()
+        
+        # Yellow zone right (+5 to +20)
+        cr.set_source_rgba(*yellow_color, 0.9)
+        cr.rectangle(cents_to_x(5), zone_y, cents_to_x(20) - cents_to_x(5), zone_height)
+        cr.fill()
+        
+        # Red zone right (+20 to +50)
+        cr.set_source_rgba(*red_color, 0.9)
+        self._rounded_rect(cr, cents_to_x(20), zone_y, cents_to_x(50) - cents_to_x(20), zone_height, 6)
+        cr.fill()
+        
+        # === CENTER LINE (target) ===
+        cr.set_source_rgb(1.0, 1.0, 1.0)
+        cr.set_line_width(3)
+        center_x = cents_to_x(0)
+        cr.move_to(center_x, bar_y - 8)
+        cr.line_to(center_x, bar_y + bar_height + 8)
+        cr.stroke()
+        
+        # === TICK MARKS AND LABELS ===
+        tick_y = bar_y + bar_height + 12
+        
+        cr.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        cr.set_font_size(14)  # Larger tick labels
+        
+        for cents_val in range(-50, 51, 10):
+            x = cents_to_x(cents_val)
+            
+            # Tick mark
+            cr.set_line_width(2)
+            if cents_val == 0:
+                cr.set_source_rgb(*green_color)
+            else:
+                cr.set_source_rgb(*text_bright)  # White ticks
+            
+            cr.move_to(x, bar_y + bar_height + 3)
+            cr.line_to(x, bar_y + bar_height + 10)
+            cr.stroke()
+            
+            # Label
+            label = str(abs(cents_val))
+            if cents_val < 0:
+                label = "−" + label  # Minus sign
+            elif cents_val > 0:
+                label = "+" + label
+            
+            extents = cr.text_extents(label)
+            cr.move_to(x - extents.width / 2, tick_y + 14)
+            cr.show_text(label)
+        
+        # === LARGE NEEDLE/INDICATOR ===
+        if self.has_signal:
+            needle_x = cents_to_x(self.display_cents)
+            
+            # Determine color
+            if abs(self.display_cents) < 5:
+                needle_color = green_color
+            elif abs(self.display_cents) < 20:
+                needle_color = yellow_color
+            else:
+                needle_color = red_color
+            
+            # Large triangle pointer
+            cr.set_source_rgb(*needle_color)
+            needle_width = 24  # Wider needle
+            needle_height = 30  # Taller needle
+            
+            cr.move_to(needle_x, bar_y - 2)
+            cr.line_to(needle_x - needle_width / 2, bar_y - needle_height)
+            cr.line_to(needle_x + needle_width / 2, bar_y - needle_height)
+            cr.close_path()
+            cr.fill()
+            
+            # White outline for contrast
+            cr.set_source_rgb(1.0, 1.0, 1.0)
+            cr.set_line_width(2)
+            cr.move_to(needle_x, bar_y - 2)
+            cr.line_to(needle_x - needle_width / 2, bar_y - needle_height)
+            cr.line_to(needle_x + needle_width / 2, bar_y - needle_height)
+            cr.close_path()
+            cr.stroke()
+        else:
+            # No signal - hollow triangle at center
+            needle_x = cents_to_x(0)
+            cr.set_source_rgb(*text_bright)  # White outline
+            cr.set_line_width(3)
+            needle_width = 20
+            needle_height = 25
+            cr.move_to(needle_x, bar_y - 2)
+            cr.line_to(needle_x - needle_width / 2, bar_y - needle_height)
+            cr.line_to(needle_x + needle_width / 2, bar_y - needle_height)
+            cr.close_path()
+            cr.stroke()
+        
+        # === FLAT / SHARP LABELS ===
+        cr.set_font_size(18)
+        cr.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        
+        # FLAT label (left)
+        cr.set_source_rgb(*red_color)
+        cr.move_to(bar_x, bar_y - 15)
+        cr.show_text("♭ FLAT")
+        
+        # SHARP label (right)
+        sharp_text = "SHARP ♯"
+        extents = cr.text_extents(sharp_text)
+        cr.move_to(bar_x + bar_width - extents.width, bar_y - 15)
+        cr.show_text(sharp_text)
+        
+        # === STATUS MESSAGE ===
+        status_y = height - 30
+        cr.set_font_size(24)
+        cr.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_BOLD)
+        
+        if self.in_tune:
+            cr.set_source_rgb(*green_color)
+            status_text = "✓ IN TUNE"
+        elif self.has_signal:
+            cents_val = int(round(self.display_cents))
+            if cents_val < -5:
+                color = red_color if cents_val < -20 else yellow_color
+                cr.set_source_rgb(*color)
+                status_text = f"↑ TUNE UP ({cents_val} cents)"
+            elif cents_val > 5:
+                color = red_color if cents_val > 20 else yellow_color
+                cr.set_source_rgb(*color)
+                status_text = f"↓ TUNE DOWN (+{cents_val} cents)"
+            else:
+                cr.set_source_rgb(*green_color)
+                status_text = "✓ IN TUNE"
+        else:
+            cr.set_source_rgb(*text_bright)  # White text
+            status_text = "Listening..."
+        
+        extents = cr.text_extents(status_text)
+        cr.move_to(cx - extents.width / 2, status_y)
+        cr.show_text(status_text)
+    
+    def _rounded_rect(self, cr, x, y, w, h, r):
+        """Draw a rounded rectangle path"""
+        cr.new_path()
+        cr.arc(x + r, y + r, r, math.pi, 1.5 * math.pi)
+        cr.arc(x + w - r, y + r, r, 1.5 * math.pi, 2 * math.pi)
+        cr.arc(x + w - r, y + h - r, r, 0, 0.5 * math.pi)
+        cr.arc(x + r, y + h - r, r, 0.5 * math.pi, math.pi)
+        cr.close_path()
+
+
+class TunerDialog(Adw.Dialog):
+    """Chromatic tuner dialog for bass and guitar"""
+    
+    def __init__(self, parent_window, **kwargs):
+        super().__init__(**kwargs)
+        self.parent_window = parent_window
+        self.set_title("Tuner")
+        self.set_content_width(460)
+        self.set_content_height(420)
+        
+        self.pipeline = None
+        self.running = False
+        self.sample_rate = 48000
+        
+        # Audio buffer for accumulating samples (needed for low frequencies)
+        # For B0 (30.87 Hz), period = 48000/30.87 = 1555 samples
+        # We need at least 3-4 periods for reliable detection = ~6000 samples
+        # Using 16384 for safety with very low frequencies
+        self.audio_buffer = np.array([], dtype=np.float32)
+        self.buffer_target_size = 16384
+        
+        # Smoothing for stable display
+        self.freq_history = []
+        self.history_size = 8  # More smoothing for low frequencies
+        
+        self._build_ui()
+        
+        # Start tuner automatically when dialog opens
+        GLib.idle_add(self._start_tuner)
+    
+    def _build_ui(self):
+        """Build the tuner UI"""
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        
+        # Header bar
+        header = Adw.HeaderBar()
+        header.add_css_class("flat")
+        main_box.append(header)
+        
+        # Content box
+        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        content_box.set_margin_top(8)
+        content_box.set_margin_bottom(16)
+        content_box.set_margin_start(16)
+        content_box.set_margin_end(16)
+        
+        # Gauge display
+        self.gauge = TunerGauge()
+        self.gauge.set_hexpand(True)
+        self.gauge.set_vexpand(True)
+        content_box.append(self.gauge)
+        
+        main_box.append(content_box)
+        self.set_child(main_box)
+        
+        # Connect close signal
+        self.connect("closed", self._on_dialog_closed)
+    
+    def _start_tuner(self):
+        """Start audio capture and pitch detection"""
+        if self.running:
+            return
+        
+        try:
+            # Create GStreamer pipeline for audio capture with larger buffer
+            # buffer-time in microseconds: 200ms = 200000us gives us ~9600 samples per buffer at 48kHz
+            pipeline_str = (
+                f"pulsesrc buffer-time=200000 latency-time=50000 ! "
+                f"audioconvert ! "
+                f"audio/x-raw,format=F32LE,channels=1,rate={self.sample_rate} ! "
+                f"appsink name=sink emit-signals=true sync=false max-buffers=5 drop=true"
+            )
+            
+            self.pipeline = Gst.parse_launch(pipeline_str)
+            
+            # Get the appsink
+            appsink = self.pipeline.get_by_name("sink")
+            appsink.connect("new-sample", self._on_new_sample)
+            
+            self.pipeline.set_state(Gst.State.PLAYING)
+            self.running = True
+            
+        except Exception as e:
+            self.cents_label.set_text(f"Error: {str(e)}")
+            self.running = False
+    
+    def _stop_tuner(self):
+        """Stop audio capture"""
+        self.running = False
+        if self.pipeline:
+            self.pipeline.set_state(Gst.State.NULL)
+            self.pipeline = None
+        self.audio_buffer = np.array([], dtype=np.float32)
+        self.freq_history = []
+    
+    def _on_new_sample(self, appsink):
+        """Process new audio sample"""
+        if not self.running:
+            return Gst.FlowReturn.OK
+            
+        sample = appsink.emit("pull-sample")
+        if sample:
+            buffer = sample.get_buffer()
+            success, map_info = buffer.map(Gst.MapFlags.READ)
+            
+            if success:
+                # Convert buffer to numpy array
+                audio_data = np.frombuffer(map_info.data, dtype=np.float32).copy()
+                buffer.unmap(map_info)
+                
+                # Accumulate audio data
+                self.audio_buffer = np.concatenate([self.audio_buffer, audio_data])
+                
+                # Keep buffer at target size
+                if len(self.audio_buffer) > self.buffer_target_size:
+                    self.audio_buffer = self.audio_buffer[-self.buffer_target_size:]
+                
+                # Only process when we have enough data for low frequency detection
+                if len(self.audio_buffer) >= self.buffer_target_size * 0.75:
+                    frequency = self._detect_pitch(self.audio_buffer)
+                    
+                    # Apply smoothing
+                    smoothed_freq = self._smooth_frequency(frequency)
+                    
+                    # Update UI in main thread
+                    GLib.idle_add(self._update_display, smoothed_freq)
+        
+        return Gst.FlowReturn.OK
+    
+    def _smooth_frequency(self, frequency):
+        """Apply smoothing to frequency readings"""
+        if frequency <= 0:
+            # Clear history on silence
+            self.freq_history = []
+            return 0
+        
+        self.freq_history.append(frequency)
+        if len(self.freq_history) > self.history_size:
+            self.freq_history.pop(0)
+        
+        if len(self.freq_history) < 2:
+            return frequency
+        
+        # Use median for robustness against outliers
+        return float(np.median(self.freq_history))
+    
+    def _detect_pitch(self, audio_data):
+        """Detect pitch using autocorrelation optimized for bass frequencies"""
+        min_samples = 4096
+        if len(audio_data) < min_samples:
+            return 0
+        
+        # Check if signal is too quiet
+        rms = np.sqrt(np.mean(audio_data ** 2))
+        if rms < 0.003:  # Lower threshold for bass
+            return 0
+        
+        # Use the most recent samples
+        if len(audio_data) > self.buffer_target_size:
+            audio_data = audio_data[-self.buffer_target_size:]
+        
+        # Normalize and remove DC offset
+        audio_data = audio_data - np.mean(audio_data)
+        
+        # Apply window function
+        window = np.hanning(len(audio_data))
+        audio_data = audio_data * window
+        
+        # Frequency range for bass and guitar
+        # B0 = 30.87 Hz (6-string bass low B) -> period = 1555 samples at 48kHz
+        # E1 = 41.20 Hz (4-string bass low E) -> period = 1165 samples
+        # E5 = 659.26 Hz (high E on guitar) -> period = 73 samples
+        min_freq = 25.0   # Below B0
+        max_freq = 1200.0  # Above high harmonics
+        
+        min_period = int(self.sample_rate / max_freq)  # ~40 samples
+        max_period = int(self.sample_rate / min_freq)  # ~1920 samples
+        
+        # Ensure we have enough data for the longest period
+        if max_period >= len(audio_data) // 3:
+            max_period = len(audio_data) // 3
+        
+        if min_period >= max_period or max_period < 50:
+            return 0
+        
+        # Autocorrelation method (more reliable than YIN for low frequencies)
+        # Compute normalized autocorrelation
+        n = len(audio_data)
+        
+        # Use FFT for faster autocorrelation
+        fft_size = 1 << (2 * n - 1).bit_length()  # Next power of 2
+        fft = np.fft.rfft(audio_data, fft_size)
+        autocorr = np.fft.irfft(fft * np.conj(fft))[:n]
+        
+        # Normalize by the zero-lag value
+        if autocorr[0] > 0:
+            autocorr = autocorr / autocorr[0]
+        else:
+            return 0
+        
+        # Find peaks in the autocorrelation
+        # Look for the first significant peak after the initial decay
+        
+        # First, find where autocorrelation drops below a threshold
+        threshold = 0.5
+        start_search = min_period
+        
+        # Find first crossing below threshold
+        for i in range(min_period, min(max_period, len(autocorr) - 1)):
+            if autocorr[i] < threshold:
+                start_search = i
+                break
+        
+        # Now find the peak after this dip
+        peak_idx = 0
+        peak_val = 0
+        
+        for i in range(start_search, min(max_period, len(autocorr) - 1)):
+            # Look for local maximum
+            if autocorr[i] > autocorr[i-1] and autocorr[i] > autocorr[i+1]:
+                if autocorr[i] > peak_val and autocorr[i] > 0.3:  # Minimum correlation
+                    peak_val = autocorr[i]
+                    peak_idx = i
+                    break  # Take first significant peak (fundamental)
+        
+        # If no peak found, try finding global max in range
+        if peak_idx == 0:
+            search_region = autocorr[start_search:max_period]
+            if len(search_region) > 0:
+                local_max = np.argmax(search_region)
+                if search_region[local_max] > 0.25:
+                    peak_idx = local_max + start_search
+        
+        if peak_idx <= 0:
+            return 0
+        
+        # Parabolic interpolation for sub-sample accuracy
+        if peak_idx > 1 and peak_idx < len(autocorr) - 1:
+            alpha = autocorr[peak_idx - 1]
+            beta = autocorr[peak_idx]
+            gamma = autocorr[peak_idx + 1]
+            
+            denom = alpha - 2 * beta + gamma
+            if abs(denom) > 1e-10 and beta > alpha and beta > gamma:
+                p = 0.5 * (alpha - gamma) / denom
+                peak_idx = peak_idx + p
+        
+        if peak_idx > 0:
+            frequency = self.sample_rate / peak_idx
+            # Sanity check
+            if min_freq <= frequency <= max_freq:
+                return frequency
+        
+        return 0
+    
+    def _update_display(self, frequency):
+        """Update the UI with detected pitch"""
+        if frequency <= 0 or frequency > 2000:
+            self.gauge.set_tuning("—", None, 0, 0, False)
+            return
+        
+        note_name, octave, cents = freq_to_note(frequency)
+        
+        if note_name is None:
+            self.gauge.set_tuning("—", None, 0, 0, False)
+            return
+        
+        # Update gauge
+        self.gauge.set_tuning(note_name, octave, cents, frequency, True)
+    
+    def _on_dialog_closed(self, dialog):
+        """Clean up when dialog is closed"""
+        self._stop_tuner()
 
 
 class AudioRecorderApp(Adw.Application):
@@ -99,6 +702,7 @@ class AudioRecorderApp(Adw.Application):
         self.set_accels_for_action("win.play_pause_all", ["<Control>space"])
         self.set_accels_for_action("win.stop_all", ["<Control>period"])
         self.set_accels_for_action("win.toggle_monitoring", ["<Control>l"])
+        self.set_accels_for_action("win.show_tuner", ["<Control>u"])
         self.set_accels_for_action("win.show_help", ["F1"])
         self.set_accels_for_action("win.show_shortcuts", ["<Control>question"])
 
@@ -231,6 +835,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             ("play_pause_all", lambda a, p: self.on_play_all(None)),
             ("stop_all", lambda a, p: self.stop_all_playback()),
             ("toggle_monitoring", self.on_toggle_monitoring_action),
+            ("show_tuner", self.on_show_tuner),
             ("show_help", self.on_show_help),
             ("show_shortcuts", self.on_show_shortcuts),
             ("about", self.on_about),
@@ -1132,6 +1737,9 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                 ("Stop All", "<Control>period"),
                 ("Toggle Monitoring", "<Control>l"),
             ]),
+            ("Tools", [
+                ("Chromatic Tuner", "<Control>u"),
+            ]),
             ("Export", [
                 ("Export Tracks", "<Control><Shift>t"),
                 ("Export Mixed", "<Control><Shift>x"),
@@ -1154,6 +1762,11 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         
         shortcuts_window.add_section(section)
         shortcuts_window.present()
+    
+    def on_show_tuner(self, action, param):
+        """Open the chromatic tuner dialog"""
+        tuner = TunerDialog(self)
+        tuner.present(self)
     
     def on_show_help(self, action, param):
         if os.path.exists(HELP_DIR):

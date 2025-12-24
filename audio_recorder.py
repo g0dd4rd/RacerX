@@ -4,7 +4,7 @@ import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 gi.require_version('Gst', '1.0')
-from gi.repository import Gtk, Adw, GLib, Gio, Gst
+from gi.repository import Gtk, Adw, GLib, Gio, Gst, Gdk
 import subprocess
 import os
 import tempfile
@@ -23,6 +23,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get('AUDIO_RECORDER_DATA_DIR', os.path.join(SCRIPT_DIR, 'data'))
 UI_DIR = os.path.join(DATA_DIR, 'ui')
 HELP_DIR = os.path.join(DATA_DIR, 'help', 'C')
+ICONS_DIR = os.path.join(DATA_DIR, 'icons')
 
 
 class Track:
@@ -684,6 +685,10 @@ class AudioRecorderApp(Adw.Application):
             pass
         
     def do_activate(self):
+        # Register custom icon path for tuning fork icon
+        icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+        icon_theme.add_search_path(os.path.join(ICONS_DIR, 'hicolor', 'scalable', 'actions'))
+        
         win = AudioRecorderWindow(application=self)
         self.setup_accelerators()
         win.present()
@@ -800,6 +805,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
     play_all_btn = Gtk.Template.Child()
     stop_all_btn = Gtk.Template.Child()
     monitor_toggle = Gtk.Template.Child()
+    tuner_btn = Gtk.Template.Child()
     status_label = Gtk.Template.Child()
     track_list = Gtk.Template.Child()
     
@@ -814,6 +820,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         self.play_all_btn.connect("clicked", self.on_play_all)
         self.stop_all_btn.connect("clicked", self.on_stop_all)
         self.monitor_toggle.connect("toggled", self.on_monitor_toggled)
+        self.tuner_btn.connect("clicked", lambda btn: self.on_show_tuner(None, None))
         
         # Create actions
         self.create_actions()

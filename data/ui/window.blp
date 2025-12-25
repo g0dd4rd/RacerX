@@ -3,8 +3,8 @@ using Adw 1;
 
 template $AudioRecorderWindow : Adw.ApplicationWindow {
   title: "Audio Recorder";
-  default-width: 500;
-  default-height: 450;
+  default-width: 550;
+  default-height: 550;
 
   Adw.ToolbarView {
     [top]
@@ -45,6 +45,14 @@ template $AudioRecorderWindow : Adw.ApplicationWindow {
       Gtk.Button tuner_btn {
         icon-name: "tuning-fork-symbolic";
         tooltip-text: "Chromatic Tuner (Ctrl+U)";
+        
+        styles ["flat"]
+      }
+
+      [end]
+      Gtk.ToggleButton drum_machine_btn {
+        icon-name: "drum-symbolic";
+        tooltip-text: "Drum Machine (Ctrl+D)";
         
         styles ["flat"]
       }
@@ -163,6 +171,10 @@ menu primary_menu {
     item {
       label: _("Chromatic Tuner");
       action: "win.show_tuner";
+    }
+    item {
+      label: _("Drum Machine");
+      action: "win.show_drum_machine";
     }
   }
 

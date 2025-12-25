@@ -34,6 +34,10 @@
     <title>Working with Audio</title>
   </section>
 
+  <section id="tools" style="2column">
+    <title>Tools</title>
+  </section>
+
   <section id="advanced" style="2column">
     <title>Advanced Features</title>
   </section>

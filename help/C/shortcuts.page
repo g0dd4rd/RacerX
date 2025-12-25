@@ -78,6 +78,20 @@
     </table>
   </section>
 
+  <section id="tools-shortcuts">
+    <title>Tools</title>
+    <table frame="all" rules="rows">
+      <tr>
+        <td><p>Chromatic Tuner</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>U</key></keyseq></p></td>
+      </tr>
+      <tr>
+        <td><p>Drum Machine</p></td>
+        <td><p><keyseq><key>Ctrl</key><key>D</key></keyseq></p></td>
+      </tr>
+    </table>
+  </section>
+
   <section id="export-shortcuts">
     <title>Export</title>
     <table frame="all" rules="rows">

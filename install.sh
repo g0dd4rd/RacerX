@@ -7,6 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$HOME/.local/share/audio-recorder"
 DESKTOP_DIR="$HOME/.local/share/applications"
 ICON_DIR="$HOME/.local/share/icons/hicolor/scalable/apps"
+ACTION_ICON_DIR="$HOME/.local/share/icons/hicolor/scalable/actions"
 
 echo "Installing Audio Recorder..."
 
@@ -14,9 +15,11 @@ echo "Installing Audio Recorder..."
 mkdir -p "$APP_DIR"
 mkdir -p "$DESKTOP_DIR"
 mkdir -p "$ICON_DIR"
+mkdir -p "$ACTION_ICON_DIR"
 
-# Copy icon
+# Copy icons
 cp "$SCRIPT_DIR/data/icons/hicolor/scalable/apps/org.gnome.AudioRecorder.svg" "$ICON_DIR/"
+cp "$SCRIPT_DIR/data/icons/hicolor/scalable/actions/"*.svg "$ACTION_ICON_DIR/" 2>/dev/null || true
 
 # Copy application files
 cp "$SCRIPT_DIR/audio_recorder.py" "$APP_DIR/"

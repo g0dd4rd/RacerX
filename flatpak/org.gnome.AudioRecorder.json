@@ -20,6 +20,35 @@
     ],
     "modules": [
         {
+            "name": "fluidsynth",
+            "buildsystem": "cmake-ninja",
+            "config-opts": [
+                "-DLIB_SUFFIX=",
+                "-Denable-sdl2=OFF"
+            ],
+            "sources": [
+                {
+                    "type": "archive",
+                    "url": "https://github.com/FluidSynth/fluidsynth/archive/refs/tags/v2.3.4.tar.gz",
+                    "sha256": "1529ef5bc3b9ef3adc2a7964505912f7305103e269e50cc0316f500b22053ac9"
+                }
+            ]
+        },
+        {
+            "name": "fluid-soundfont",
+            "buildsystem": "simple",
+            "build-commands": [
+                "install -Dm644 FluidR3_GM.sf2 /app/share/soundfonts/FluidR3_GM.sf2"
+            ],
+            "sources": [
+                {
+                    "type": "archive",
+                    "url": "https://archive.org/download/fluidr3-gm-gs/FluidR3_GM.sf2.tar.gz",
+                    "sha256": "b65c9ec2c5f0f0c5a9c0f34f3b5e9a9a5e4e5b0f5c6d7e8f9a0b1c2d3e4f5a6b"
+                }
+            ]
+        },
+        {
             "name": "audio-recorder",
             "buildsystem": "simple",
             "build-commands": [
@@ -29,6 +58,8 @@
                 "install -Dm644 data/org.gnome.AudioRecorder.desktop /app/share/applications/org.gnome.AudioRecorder.desktop",
                 "install -Dm644 data/org.gnome.AudioRecorder.metainfo.xml /app/share/metainfo/org.gnome.AudioRecorder.metainfo.xml",
                 "install -Dm644 data/icons/hicolor/scalable/apps/org.gnome.AudioRecorder.svg /app/share/icons/hicolor/scalable/apps/org.gnome.AudioRecorder.svg",
+                "install -Dm644 data/icons/hicolor/scalable/actions/tuning-fork-symbolic.svg /app/share/icons/hicolor/scalable/actions/tuning-fork-symbolic.svg",
+                "install -Dm644 data/icons/hicolor/scalable/actions/drum-symbolic.svg /app/share/icons/hicolor/scalable/actions/drum-symbolic.svg",
                 "install -d /app/share/audio-recorder/help",
                 "cp -r help/C /app/share/audio-recorder/help/",
                 "install -D flatpak/audio-recorder /app/bin/audio-recorder"

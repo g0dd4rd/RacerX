@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <!-- Tuning fork: two prongs at top, handle at bottom -->
+  <path fill="currentColor" d="
+    M 5 1 
+    L 5 6.5 
+    Q 5 8 6.5 8.5
+    L 7.25 8.7
+    L 7.25 15
+    L 8.75 15
+    L 8.75 8.7
+    L 9.5 8.5
+    Q 11 8 11 6.5
+    L 11 1
+    L 9.5 1
+    L 9.5 6.5
+    Q 9.5 7 9 7.3
+    L 8 7.5
+    L 7 7.3
+    Q 6.5 7 6.5 6.5
+    L 6.5 1
+    Z
+  "/>
+</svg>

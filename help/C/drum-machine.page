@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<page xmlns="http://projectmallard.org/1.0/"
+      xmlns:its="http://www.w3.org/2005/11/its"
+      type="topic"
+      id="drum-machine">
+
+  <info>
+    <link type="guide" xref="index#tools"/>
+    <credit type="author">
+      <name>Audio Recorder Team</name>
+    </credit>
+    <license>
+      <p>Creative Commons Share Alike 4.0</p>
+    </license>
+    <desc>Create drum patterns with the built-in drum machine</desc>
+  </info>
+
+  <title>Drum Machine</title>
+
+  <p>The drum machine lets you create and play drum patterns using General MIDI sounds powered by FluidSynth.</p>
+
+  <section id="opening">
+    <title>Opening the Drum Machine</title>
+    <p>Access the drum machine in one of these ways:</p>
+    <list>
+      <item><p>Click the drum icon in the header bar</p></item>
+      <item><p>Use the menu: <guiseq><gui>Menu</gui><gui>Drum Machine</gui></guiseq></p></item>
+      <item><p>Press <keyseq><key>Ctrl</key><key>D</key></keyseq></p></item>
+    </list>
+  </section>
+
+  <section id="controls">
+    <title>Controls</title>
+    <terms>
+      <item>
+        <title>Play/Stop</title>
+        <p>Start or stop playback of the drum pattern.</p>
+      </item>
+      <item>
+        <title>BPM</title>
+        <p>Set the tempo in beats per minute (40-240 BPM). Changes take effect immediately during playback.</p>
+      </item>
+      <item>
+        <title>Time Signature</title>
+        <p>Set the time signature using two dropdowns: numerator (notes per bar) and denominator (note value). Examples: 4/4, 5/8, 7/16, 17/16.</p>
+      </item>
+      <item>
+        <title>Clear</title>
+        <p>Clear all notes from the pattern.</p>
+      </item>
+    </terms>
+  </section>
+
+  <section id="grid">
+    <title>Pattern Grid</title>
+    <p>The grid displays one bar of the pattern. Each row represents a drum instrument, and each column represents a time step.</p>
+    <list>
+      <item><p><em>Click</em> a cell to toggle a note on or off</p></item>
+      <item><p>Darker vertical lines mark beat boundaries</p></item>
+      <item><p>The playhead shows the current position during playback</p></item>
+    </list>
+    <p>Available instruments: Kick, Snare, Hi-Hat Closed, Hi-Hat Open, Tom Hi, Tom Mid, Tom Lo, Crash, Ride, Cowbell</p>
+  </section>
+
+  <section id="time-signatures">
+    <title>Understanding Time Signatures</title>
+    <p>The time signature determines the number of steps per bar:</p>
+    <list>
+      <item><p><em>4/4</em> — 4 quarter notes per bar (4 steps)</p></item>
+      <item><p><em>16/16</em> — 16 sixteenth notes per bar (16 steps)</p></item>
+      <item><p><em>5/8</em> — 5 eighth notes per bar (5 steps)</p></item>
+      <item><p><em>7/16</em> — 7 sixteenth notes per bar (7 steps)</p></item>
+    </list>
+    <p>Beat markers are displayed based on the denominator: /4 marks every step, /8 every 2 steps, /16 every 4 steps, /32 every 8 steps.</p>
+  </section>
+
+  <section id="saving">
+    <title>Saving Patterns</title>
+    <p>Drum machine patterns are saved as part of your project file. When you save your project, the current drum pattern, tempo, and time signature are preserved.</p>
+    <p>Creating a new project resets the drum machine to defaults: 4/4 time at 120 BPM.</p>
+  </section>
+
+  <section id="requirements">
+    <title>Requirements</title>
+    <p>The drum machine uses FluidSynth for high-quality General MIDI sounds. Make sure you have the following packages installed:</p>
+    <list>
+      <item><p><code>fluidsynth</code> — MIDI synthesizer</p></item>
+      <item><p><code>fluid-soundfont-gm</code> — General MIDI soundfont</p></item>
+    </list>
+    <p>On Fedora, install with: <code>sudo dnf install fluidsynth fluid-soundfont-gm</code></p>
+  </section>
+
+</page>
+

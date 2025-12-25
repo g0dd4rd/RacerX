@@ -15,6 +15,8 @@ A simple multi-track audio recorder for GNOME, built with GTK4 and libadwaita.
 - **Input monitoring** — Hear your microphone input in real-time
 - **Project management** — Save and load projects with all recordings
 - **Import/Export** — Import WAV files and export individual tracks or mixed audio
+- **Chromatic tuner** — Built-in tuner with high-contrast accessible design for tuning any instrument
+- **Drum machine** — Pattern-based drum sequencer with FluidSynth MIDI sounds and custom time signatures
 - **Keyboard shortcuts** — Full keyboard navigation with accessibility-friendly shortcuts
 - **GNOME integration** — Native look and feel with libadwaita
 
@@ -26,23 +28,25 @@ A simple multi-track audio recorder for GNOME, built with GTK4 and libadwaita.
 - GStreamer 1.0
 - PipeWire (with `pw-record` and `pw-play` utilities)
 - PyGObject
+- NumPy (for tuner pitch detection)
+- FluidSynth + General MIDI soundfont (for drum machine)
 
 ### Installation on Fedora
 
 ```bash
-sudo dnf install gtk4 libadwaita python3-gobject gstreamer1 pipewire-utils
+sudo dnf install gtk4 libadwaita python3-gobject gstreamer1 pipewire-utils python3-numpy fluidsynth fluid-soundfont-gm
 ```
 
 ### Installation on Ubuntu/Debian
 
 ```bash
-sudo apt install libgtk-4-1 libadwaita-1-0 python3-gi gstreamer1.0-tools pipewire
+sudo apt install libgtk-4-1 libadwaita-1-0 python3-gi gstreamer1.0-tools pipewire python3-numpy fluidsynth fluid-soundfont-gm
 ```
 
 ### Installation on Arch Linux
 
 ```bash
-sudo pacman -S gtk4 libadwaita python-gobject gstreamer pipewire
+sudo pacman -S gtk4 libadwaita python-gobject gstreamer pipewire python-numpy fluidsynth soundfont-fluid
 ```
 
 ## Installation
@@ -114,6 +118,12 @@ chmod +x audio_recorder.py
 | Stop All | `Ctrl+.` |
 | Toggle Monitoring | `Ctrl+L` |
 
+### Tools
+| Action | Shortcut |
+|--------|----------|
+| Chromatic Tuner | `Ctrl+U` |
+| Drum Machine | `Ctrl+D` |
+
 ### Export
 | Action | Shortcut |
 |--------|----------|
@@ -163,6 +173,8 @@ help/
     import-export.page
     shortcuts.page
     troubleshooting.page
+    tuner.page         # Chromatic tuner documentation
+    drum-machine.page  # Drum machine documentation
 install.sh           # Install script (adds to application menu)
 uninstall.sh         # Uninstall script
 build-ui.sh          # Script to compile Blueprint files
@@ -209,6 +221,8 @@ Powered by:
 - [libadwaita](https://gnome.pages.gitlab.gnome.org/libadwaita/) — Building blocks for modern GNOME apps
 - [GStreamer](https://gstreamer.freedesktop.org/) — Open source multimedia framework
 - [PipeWire](https://pipewire.org/) — Modern audio/video server
+- [FluidSynth](https://www.fluidsynth.org/) — Real-time software synthesizer for MIDI
+- [NumPy](https://numpy.org/) — Scientific computing for pitch detection
 
 ---
 

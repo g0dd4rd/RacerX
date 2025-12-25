@@ -22,6 +22,8 @@
       <li>Real-time input monitoring with configurable latency</li>
       <li>Project save/load for session management</li>
       <li>Import WAV files and export individual or mixed audio</li>
+      <li>Chromatic tuner with high-contrast accessible design</li>
+      <li>Drum machine with FluidSynth MIDI playback and custom time signatures</li>
       <li>Full keyboard navigation with accessibility-friendly shortcuts</li>
     </ul>
   </description>
@@ -61,6 +63,13 @@
     <keyword>podcast</keyword>
     <keyword>voice</keyword>
     <keyword>multitrack</keyword>
+    <keyword>tuner</keyword>
+    <keyword>chromatic</keyword>
+    <keyword>drum</keyword>
+    <keyword>drums</keyword>
+    <keyword>drum machine</keyword>
+    <keyword>metronome</keyword>
+    <keyword>midi</keyword>
   </keywords>
   
   <!-- Screenshots can be added later:

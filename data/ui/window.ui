@@ -8,8 +8,8 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
   <requires lib="gtk" version="4.0"/>
   <template class="AudioRecorderWindow" parent="AdwApplicationWindow">
     <property name="title">Audio Recorder</property>
-    <property name="default-width">500</property>
-    <property name="default-height">450</property>
+    <property name="default-width">550</property>
+    <property name="default-height">550</property>
     <child>
       <object class="AdwToolbarView">
         <child type="top">
@@ -53,6 +53,15 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
               <object class="GtkButton" id="tuner_btn">
                 <property name="icon-name">tuning-fork-symbolic</property>
                 <property name="tooltip-text">Chromatic Tuner (Ctrl+U)</property>
+                <style>
+                  <class name="flat"/>
+                </style>
+              </object>
+            </child>
+            <child type="end">
+              <object class="GtkToggleButton" id="drum_machine_btn">
+                <property name="icon-name">drum-symbolic</property>
+                <property name="tooltip-text">Drum Machine (Ctrl+D)</property>
                 <style>
                   <class name="flat"/>
                 </style>
@@ -180,6 +189,10 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
       <item>
         <attribute name="label" translatable="yes">Chromatic Tuner</attribute>
         <attribute name="action">win.show_tuner</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">Drum Machine</attribute>
+        <attribute name="action">win.show_drum_machine</attribute>
       </item>
     </section>
     <section>

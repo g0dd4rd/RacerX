@@ -13,6 +13,7 @@ import json
 import shutil
 import numpy as np
 import math
+import time
 
 # Initialize GStreamer
 Gst.init(None)
@@ -73,6 +74,693 @@ def freq_to_note(frequency):
     note_name = NOTE_NAMES[note_index]
     
     return note_name, octave, cents
+
+
+# ==================== Drum Machine ====================
+
+# Standard General MIDI drum map (channel 10) with short names
+GM_DRUMS = {
+    "Kick": 36,
+    "Snare": 38,
+    "HH Closed": 42,
+    "HH Open": 46,
+    "Tom Lo": 45,
+    "Tom Mid": 47,
+    "Tom Hi": 50,
+    "Crash": 49,
+    "Ride": 51,
+    "Clap": 39,
+    "Rimshot": 37,
+    "Cowbell": 56,
+}
+
+class DrumGrid(Gtk.DrawingArea):
+    """Grid widget for drum pattern editing"""
+    
+    def __init__(self, drum_machine):
+        super().__init__()
+        self.dm = drum_machine
+        self.set_hexpand(True)
+        self.set_vexpand(True)
+        self.set_draw_func(self._draw)
+        
+        # Enable mouse interaction
+        click = Gtk.GestureClick.new()
+        click.connect("pressed", self._on_click)
+        self.add_controller(click)
+        
+        self.set_can_focus(True)
+        self.set_focusable(True)
+    
+    def _draw(self, area, cr, width, height):
+        """Draw the drum grid"""
+        import cairo
+        
+        # Colors
+        bg_color = (0.12, 0.12, 0.14)
+        grid_line = (0.3, 0.3, 0.32)
+        beat_line = (0.5, 0.5, 0.52)
+        bar_line = (0.7, 0.7, 0.72)
+        cell_off = (0.2, 0.2, 0.22)
+        cell_on = (0.2, 0.7, 0.4)
+        cell_accent = (0.9, 0.5, 0.2)
+        playhead_color = (0.3, 0.6, 1.0)
+        text_color = (0.9, 0.9, 0.9)
+        
+        # Layout
+        label_width = 75
+        header_height = 22
+        grid_x = label_width
+        grid_y = header_height
+        grid_width = width - label_width - 5
+        grid_height = height - header_height - 5
+        
+        num_drums = len(self.dm.drum_order)
+        num_steps = self.dm.steps_per_bar * self.dm.num_bars
+        
+        if num_drums == 0 or num_steps == 0:
+            return
+        
+        cell_width = grid_width / num_steps
+        cell_height = grid_height / num_drums
+        
+        # Background
+        cr.set_source_rgb(*bg_color)
+        cr.paint()
+        
+        # Draw step numbers header
+        cr.set_source_rgb(*text_color)
+        cr.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+        cr.set_font_size(10)
+        
+        for step in range(num_steps):
+            x = grid_x + step * cell_width + cell_width / 2
+            step_in_bar = step % self.dm.steps_per_bar
+            # Beat grouping based on denominator
+            # /32→8, /16→4, /8→2, /4→1, /3→3, /2→1
+            denom = self.dm.time_sig_denominator
+            if denom == 3:
+                beat_group = 3
+            elif denom == 2:
+                beat_group = 1
+            else:
+                beat_group = max(1, denom // 4)
+            if step_in_bar % beat_group == 0:
+                beat_num = step_in_bar // beat_group + 1
+                text = str(beat_num)
+                extents = cr.text_extents(text)
+                cr.move_to(x - extents.width / 2, header_height - 8)
+                cr.show_text(text)
+        
+        # Draw drum labels
+        cr.set_font_size(11)
+        for i, drum_name in enumerate(self.dm.drum_order):
+            y = grid_y + i * cell_height + cell_height / 2 + 4
+            cr.move_to(5, y)
+            cr.show_text(drum_name)
+        
+        # Draw grid cells
+        for row, drum_name in enumerate(self.dm.drum_order):
+            for step in range(num_steps):
+                x = grid_x + step * cell_width
+                y = grid_y + row * cell_height
+                
+                # Cell background
+                if self.dm.pattern[drum_name][step]:
+                    # Check if it's an accent (first beat of bar)
+                    step_in_bar = step % self.dm.steps_per_bar
+                    if step_in_bar == 0:
+                        cr.set_source_rgb(*cell_accent)
+                    else:
+                        cr.set_source_rgb(*cell_on)
+                else:
+                    cr.set_source_rgb(*cell_off)
+                
+                # Draw cell with padding
+                padding = 2
+                cr.rectangle(x + padding, y + padding, 
+                           cell_width - 2*padding, cell_height - 2*padding)
+                cr.fill()
+        
+        # Draw grid lines
+        cr.set_line_width(1)
+        
+        # Vertical lines (step divisions)
+        for step in range(num_steps + 1):
+            x = grid_x + step * cell_width
+            step_in_bar = step % self.dm.steps_per_bar
+            
+            # Beat grouping based on denominator
+            denom = self.dm.time_sig_denominator
+            if denom == 3:
+                beat_group = 3
+            elif denom == 2:
+                beat_group = 1
+            else:
+                beat_group = max(1, denom // 4)
+            
+            if step % self.dm.steps_per_bar == 0:
+                cr.set_source_rgb(*bar_line)
+                cr.set_line_width(2)
+            elif step_in_bar % beat_group == 0:
+                cr.set_source_rgb(*beat_line)
+                cr.set_line_width(1.5)
+            else:
+                cr.set_source_rgb(*grid_line)
+                cr.set_line_width(0.5)
+            
+            cr.move_to(x, grid_y)
+            cr.line_to(x, grid_y + grid_height)
+            cr.stroke()
+        
+        # Horizontal lines (drum divisions)
+        cr.set_source_rgb(*grid_line)
+        cr.set_line_width(1)
+        for row in range(num_drums + 1):
+            y = grid_y + row * cell_height
+            cr.move_to(grid_x, y)
+            cr.line_to(grid_x + grid_width, y)
+            cr.stroke()
+        
+        # Draw playhead
+        if self.dm.playing and 0 <= self.dm.current_step < num_steps:
+            x = grid_x + self.dm.current_step * cell_width
+            cr.set_source_rgba(*playhead_color, 0.8)
+            cr.set_line_width(3)
+            cr.move_to(x, grid_y)
+            cr.line_to(x, grid_y + grid_height)
+            cr.stroke()
+            
+            # Highlight current column
+            cr.set_source_rgba(*playhead_color, 0.15)
+            cr.rectangle(x, grid_y, cell_width, grid_height)
+            cr.fill()
+    
+    def _on_click(self, gesture, n_press, x, y):
+        """Handle mouse click to toggle cells"""
+        # Calculate which cell was clicked
+        label_width = 75
+        header_height = 22
+        grid_x = label_width
+        grid_y = header_height
+        
+        width = self.get_width()
+        height = self.get_height()
+        grid_width = width - label_width - 5
+        grid_height = height - header_height - 5
+        
+        num_drums = len(self.dm.drum_order)
+        num_steps = self.dm.steps_per_bar * self.dm.num_bars
+        
+        if num_drums == 0 or num_steps == 0:
+            return
+        
+        cell_width = grid_width / num_steps
+        cell_height = grid_height / num_drums
+        
+        # Check if click is in grid area
+        if x < grid_x or y < grid_y:
+            return
+        
+        col = int((x - grid_x) / cell_width)
+        row = int((y - grid_y) / cell_height)
+        
+        if 0 <= row < num_drums and 0 <= col < num_steps:
+            drum_name = self.dm.drum_order[row]
+            self.dm.pattern[drum_name][col] = not self.dm.pattern[drum_name][col]
+            self.queue_draw()
+            self.dm._mark_dirty()
+
+
+class DrumMachinePanel(Gtk.Box):
+    """Drum machine panel for embedding in the main window"""
+    
+    def __init__(self, **kwargs):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0, **kwargs)
+        
+        # Callback for when state changes (to mark project dirty)
+        self._dirty_callback = None
+        
+        # Drum machine state
+        self.tempo = 120
+        self.time_sig_numerator = 4   # Number of notes per bar
+        self.time_sig_denominator = 4  # Note value (4=quarter, 8=eighth, 16=sixteenth)
+        self.num_bars = 1  # Fewer bars for compact display
+        self.steps_per_bar = self.time_sig_numerator  # Each note = 1 step
+        
+        self.playing = False
+        self.current_step = 0
+        self.timer_id = None
+        
+        # Drum selection - standard drum kit
+        self.drum_order = ["Kick", "Snare", "HH Closed", "HH Open", "Tom Hi", "Tom Mid", "Tom Lo", "Crash", "Ride", "Cowbell"]
+        self.pattern = {drum: [False] * (self.steps_per_bar * self.num_bars) 
+                       for drum in GM_DRUMS.keys()}
+        
+        # MIDI/Audio - initialized lazily on first play
+        self.pipeline = None
+        self.fluidsynth_proc = None
+        self.soundfont = None
+        self.audio_available = False
+        self.midi_initialized = False
+        
+        self._build_ui()
+        self._load_preset_pattern()
+    
+    def _init_midi(self):
+        """Initialize FluidSynth for MIDI drum sounds"""
+        self.fluidsynth_proc = None
+        self.soundfont = None
+        self.audio_available = False
+        
+        # Find a soundfont
+        sf_paths = [
+            "/usr/share/soundfonts/FluidR3_GM.sf2",
+            "/usr/share/sounds/sf2/FluidR3_GM.sf2",
+            "/usr/share/soundfonts/default.sf2",
+            "/usr/share/sounds/sf2/default-GM.sf2",
+            "/usr/share/soundfonts/FluidR3_GS.sf2",
+            "/usr/share/sounds/sf2/TimGM6mb.sf2",
+            "/usr/share/soundfonts/freepats-general-midi.sf2",
+            "/usr/share/sounds/sf2/GeneralUser_GS.sf2",
+        ]
+        
+        for sf in sf_paths:
+            if os.path.exists(sf):
+                self.soundfont = sf
+                break
+        
+        if not self.soundfont:
+            print("No SoundFont found. Install fluid-soundfont-gm package.")
+            return
+        
+        # Try different audio drivers
+        audio_drivers = ["pipewire", "pulseaudio", "alsa"]
+        
+        print(f"Initializing FluidSynth with soundfont: {self.soundfont}")
+        
+        for driver in audio_drivers:
+            try:
+                # Start FluidSynth in shell mode, reading commands from stdin
+                # Use simpler command line like the working test
+                self.fluidsynth_proc = subprocess.Popen(
+                    [
+                        "fluidsynth", 
+                        "-a", driver,
+                        "-g", "1.0",
+                        self.soundfont
+                    ],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                # Give it a moment to start
+                time.sleep(0.5)
+                
+                # Check if process is still running
+                if self.fluidsynth_proc.poll() is None:
+                    self.audio_available = True
+                    print(f"FluidSynth started with {driver} driver")
+                    return
+                else:
+                    # Process exited, capture stderr to see why
+                    exit_code = self.fluidsynth_proc.poll()
+                    stderr = self.fluidsynth_proc.stderr.read()
+                    stdout = self.fluidsynth_proc.stdout.read()
+                    print(f"FluidSynth exited ({exit_code}) with {driver}:")
+                    if stderr:
+                        print(f"  stderr: {stderr[:300]}")
+                    if stdout:
+                        print(f"  stdout: {stdout[:300]}")
+                    self.fluidsynth_proc = None
+            except FileNotFoundError:
+                print("FluidSynth not found. Install fluidsynth package.")
+                return
+            except Exception as e:
+                print(f"Failed to start FluidSynth with {driver}: {e}")
+        
+        print("Could not start FluidSynth with any audio driver.")
+    
+    def _build_ui(self):
+        """Build the drum machine UI"""
+        # Add CSS class for styling
+        self.add_css_class("card")
+        self.set_margin_top(6)
+        self.set_margin_bottom(6)
+        self.set_margin_start(6)
+        self.set_margin_end(6)
+        
+        # Top controls bar
+        controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        controls.set_margin_start(8)
+        controls.set_margin_end(8)
+        controls.set_margin_top(8)
+        controls.set_margin_bottom(4)
+        
+        # Title label
+        title = Gtk.Label(label="Drum Machine")
+        title.add_css_class("heading")
+        controls.append(title)
+        
+        # Play/Stop button
+        self.play_btn = Gtk.Button.new_from_icon_name("media-playback-start-symbolic")
+        self.play_btn.add_css_class("circular")
+        self.play_btn.add_css_class("suggested-action")
+        self.play_btn.set_tooltip_text("Play/Stop")
+        self.play_btn.connect("clicked", self._on_play_stop)
+        controls.append(self.play_btn)
+        
+        # Clear button
+        clear_btn = Gtk.Button.new_from_icon_name("edit-clear-symbolic")
+        clear_btn.add_css_class("circular")
+        clear_btn.add_css_class("flat")
+        clear_btn.set_tooltip_text("Clear pattern")
+        clear_btn.connect("clicked", self._on_clear)
+        controls.append(clear_btn)
+        
+        # Spacer
+        spacer1 = Gtk.Box()
+        spacer1.set_hexpand(True)
+        controls.append(spacer1)
+        
+        # Tempo control
+        tempo_label = Gtk.Label(label="BPM")
+        tempo_label.add_css_class("dim-label")
+        controls.append(tempo_label)
+        
+        self.tempo_spin = Gtk.SpinButton.new_with_range(40, 240, 1)
+        self.tempo_spin.set_value(self.tempo)
+        self.tempo_spin.connect("value-changed", self._on_tempo_changed)
+        controls.append(self.tempo_spin)
+        
+        # Time signature: numerator / denominator (e.g., 5/8 = 5 eighth notes per bar)
+        time_sig_label = Gtk.Label(label="Time:")
+        controls.append(time_sig_label)
+        
+        # Numerator: total note units per bar (1-32)
+        numerator_options = [str(i) for i in range(1, 33)]
+        self.numerator_dropdown = Gtk.DropDown.new_from_strings(numerator_options)
+        self.numerator_dropdown.set_selected(self.time_sig_numerator - 1)
+        self.numerator_dropdown.connect("notify::selected", self._on_time_sig_changed)
+        controls.append(self.numerator_dropdown)
+        
+        # Separator
+        slash_label = Gtk.Label(label="/")
+        controls.append(slash_label)
+        
+        # Denominator: note value (2=half, 4=quarter, 8=eighth, 16=sixteenth, 32=thirty-second)
+        denominator_options = ["2", "4", "8", "16", "32"]
+        self.denominator_dropdown = Gtk.DropDown.new_from_strings(denominator_options)
+        denom_values = [2, 4, 8, 16, 32]
+        denom_idx = denom_values.index(self.time_sig_denominator) if self.time_sig_denominator in denom_values else 1
+        self.denominator_dropdown.set_selected(denom_idx)
+        self.denominator_dropdown.connect("notify::selected", self._on_time_sig_changed)
+        controls.append(self.denominator_dropdown)
+        
+        self.append(controls)
+        
+        # Drum grid
+        self.grid = DrumGrid(self)
+        self.grid.set_size_request(-1, 280)  # Height for 10 drums
+        self.append(self.grid)
+    
+    def connect_dirty_callback(self, callback):
+        """Connect a callback to be called when state changes"""
+        self._dirty_callback = callback
+    
+    def _mark_dirty(self):
+        """Mark the project as having unsaved changes"""
+        if self._dirty_callback:
+            self._dirty_callback()
+    
+    def _load_preset_pattern(self):
+        """Load the default preset pattern: HH Closed, Snare, Snare, Snare"""
+        steps = self.steps_per_bar * self.num_bars
+        
+        for i in range(steps):
+            step_in_bar = i % self.steps_per_bar
+            
+            # Default pattern for 4/4: HH Closed on 1, Snare on 2, 3, 4
+            if step_in_bar == 0:
+                self.pattern["HH Closed"][i] = True
+            elif step_in_bar < self.steps_per_bar:
+                self.pattern["Snare"][i] = True
+    
+    def _on_tempo_changed(self, spin):
+        """Handle tempo change - takes effect on next step automatically"""
+        self.tempo = int(spin.get_value())
+        # No need to restart timer - each step schedules the next with current tempo
+        self._mark_dirty()
+    
+    def _on_time_sig_changed(self, dropdown, param):
+        """Handle time signature change"""
+        self.time_sig_numerator = self.numerator_dropdown.get_selected() + 1
+        denom_values = [2, 4, 8, 16, 32]
+        denom_idx = self.denominator_dropdown.get_selected()
+        if 0 <= denom_idx < len(denom_values):
+            self.time_sig_denominator = denom_values[denom_idx]
+        self._update_grid_size()
+        self._mark_dirty()
+    
+    
+    def _update_grid_size(self):
+        """Update pattern size when settings change"""
+        old_steps = self.steps_per_bar * self.num_bars
+        # Steps per bar = numerator (each note unit = 1 step)
+        self.steps_per_bar = self.time_sig_numerator
+        new_steps = self.steps_per_bar * self.num_bars
+        
+        # Resize patterns, preserving data where possible
+        for drum in GM_DRUMS.keys():
+            old_pattern = self.pattern[drum]
+            new_pattern = [False] * new_steps
+            for i in range(min(len(old_pattern), new_steps)):
+                new_pattern[i] = old_pattern[i]
+            self.pattern[drum] = new_pattern
+        
+        self.current_step = 0
+        self.grid.queue_draw()
+    
+    def _on_play_stop(self, button):
+        """Toggle playback"""
+        if self.playing:
+            self._stop()
+        else:
+            self._play()
+    
+    def _play(self):
+        """Start playback"""
+        # Initialize MIDI lazily on first play
+        if not self.midi_initialized:
+            self._init_midi()
+            self.midi_initialized = True
+        
+        self.playing = True
+        self.current_step = 0
+        self.play_btn.set_icon_name("media-playback-stop-symbolic")
+        self.play_btn.remove_css_class("suggested-action")
+        self.play_btn.add_css_class("destructive-action")
+        
+        # Play first step immediately
+        self._play_current_step()
+        
+        # Schedule next step - use single-shot timer for smooth tempo changes
+        self._schedule_next_step()
+    
+    def _stop(self):
+        """Stop playback"""
+        self.playing = False
+        if self.timer_id:
+            GLib.source_remove(self.timer_id)
+            self.timer_id = None
+        
+        self.play_btn.set_icon_name("media-playback-start-symbolic")
+        self.play_btn.remove_css_class("destructive-action")
+        self.play_btn.add_css_class("suggested-action")
+        
+        self.current_step = 0
+        self.grid.queue_draw()
+        self._update_position_display()
+    
+    def _schedule_next_step(self):
+        """Schedule the next step with current tempo - allows smooth tempo changes"""
+        if not self.playing:
+            return
+        
+        # Calculate interval based on current tempo (re-evaluated each step)
+        # BPM = beats per minute (quarter notes by convention)
+        # One bar = 4 quarter notes worth of time, divided by the number of steps
+        bar_ms = 4 * 60000 / self.tempo  # Duration of one bar in ms
+        step_ms = bar_ms / self.steps_per_bar
+        
+        # Use single-shot timer - this allows tempo to change between steps
+        self.timer_id = GLib.timeout_add(int(step_ms), self._tick)
+    
+    def _tick(self):
+        """Advance one step"""
+        if not self.playing:
+            return False
+        
+        self.current_step = (self.current_step + 1) % (self.steps_per_bar * self.num_bars)
+        self._play_current_step()
+        self.grid.queue_draw()
+        self._update_position_display()
+        
+        # Schedule next step with current tempo
+        self._schedule_next_step()
+        
+        # Return False to not repeat this timer (we schedule a new one)
+        return False
+    
+    def _play_current_step(self):
+        """Play all active drums at current step"""
+        for drum_name in self.drum_order:
+            if self.pattern[drum_name][self.current_step]:
+                self._play_drum(drum_name)
+        
+        self._update_position_display()
+    
+    def _play_drum(self, drum_name):
+        """Play a single drum sound using FluidSynth MIDI"""
+        if not self.audio_available or not self.fluidsynth_proc:
+            return
+        
+        # Check if FluidSynth is still running
+        if self.fluidsynth_proc.poll() is not None:
+            print("FluidSynth process terminated, attempting restart...")
+            self._init_midi()
+            if not self.audio_available:
+                return
+        
+        midi_note = GM_DRUMS.get(drum_name)
+        if midi_note is None:
+            return
+        
+        try:
+            # Send MIDI note on channel 9 (drums), velocity 100
+            # FluidSynth shell command: noteon channel key velocity
+            self.fluidsynth_proc.stdin.write(f"noteon 9 {midi_note} 100\n")
+            self.fluidsynth_proc.stdin.flush()
+        except BrokenPipeError:
+            print("FluidSynth connection lost, attempting restart...")
+            self._init_midi()
+        except Exception as e:
+            print(f"MIDI error: {e}")
+            self.audio_available = False
+    
+    def _update_position_display(self):
+        """Update the position display (grid redraws to show playhead)"""
+        # Position is shown via the playhead in the grid
+        pass
+    
+    def _on_clear(self, button):
+        """Clear the pattern"""
+        total_steps = self.steps_per_bar * self.num_bars
+        for drum in GM_DRUMS.keys():
+            self.pattern[drum] = [False] * total_steps
+        self.grid.queue_draw()
+        self._mark_dirty()
+    
+    def cleanup(self):
+        """Clean up when panel is hidden"""
+        self._stop()
+        # Terminate FluidSynth and reset initialization flag
+        if self.fluidsynth_proc:
+            try:
+                self.fluidsynth_proc.stdin.write("quit\n")
+                self.fluidsynth_proc.stdin.flush()
+                self.fluidsynth_proc.terminate()
+                self.fluidsynth_proc.wait(timeout=2)
+            except:
+                pass
+            self.fluidsynth_proc = None
+        # Reset so FluidSynth restarts when shown again
+        self.midi_initialized = False
+        self.audio_available = False
+    
+    def reset_to_defaults(self):
+        """Reset drum machine to default state for new project"""
+        # Reset tempo
+        self.tempo = 120
+        self.tempo_spin.set_value(120)
+        
+        # Reset time signature to 4/4
+        self.time_sig_numerator = 4
+        self.time_sig_denominator = 4
+        self.numerator_dropdown.set_selected(3)  # 4 is index 3 (0-indexed)
+        denom_values = [2, 4, 8, 16, 32]
+        self.denominator_dropdown.set_selected(denom_values.index(4))
+        
+        # Reset grid
+        self.steps_per_bar = self.time_sig_numerator
+        self.current_step = 0
+        
+        # Clear and reload pattern with defaults
+        total_steps = self.steps_per_bar * self.num_bars
+        for drum in GM_DRUMS.keys():
+            self.pattern[drum] = [False] * total_steps
+        self._load_preset_pattern()
+        
+        self.grid.queue_draw()
+    
+    def get_state(self):
+        """Get current drum machine state for saving"""
+        return {
+            'tempo': self.tempo,
+            'time_sig_numerator': self.time_sig_numerator,
+            'time_sig_denominator': self.time_sig_denominator,
+            'num_bars': self.num_bars,
+            'pattern': {drum: list(steps) for drum, steps in self.pattern.items()}
+        }
+    
+    def set_state(self, state):
+        """Restore drum machine state from saved data"""
+        if not state:
+            return
+        
+        try:
+            # Restore tempo
+            if 'tempo' in state:
+                self.tempo = state['tempo']
+                self.tempo_spin.set_value(self.tempo)
+            
+            # Restore time signature numerator
+            if 'time_sig_numerator' in state:
+                self.time_sig_numerator = state['time_sig_numerator']
+                if 1 <= self.time_sig_numerator <= 32:
+                    self.numerator_dropdown.set_selected(self.time_sig_numerator - 1)
+            
+            # Restore time signature denominator
+            if 'time_sig_denominator' in state:
+                self.time_sig_denominator = state['time_sig_denominator']
+                denom_values = [2, 4, 8, 16, 32]
+                if self.time_sig_denominator in denom_values:
+                    self.denominator_dropdown.set_selected(denom_values.index(self.time_sig_denominator))
+            
+            # Restore bars
+            if 'num_bars' in state:
+                self.num_bars = state['num_bars']
+            
+            # Recalculate steps per bar
+            self.steps_per_bar = self.time_sig_numerator
+            
+            # Restore pattern
+            if 'pattern' in state:
+                total_steps = self.steps_per_bar * self.num_bars
+                for drum in GM_DRUMS.keys():
+                    if drum in state['pattern']:
+                        saved_steps = state['pattern'][drum]
+                        # Ensure pattern is the right length
+                        self.pattern[drum] = (saved_steps + [False] * total_steps)[:total_steps]
+                    else:
+                        self.pattern[drum] = [False] * total_steps
+            
+            # Update the grid
+            self._update_grid_size()
+            self.grid.queue_draw()
+        except Exception as e:
+            print(f"Error restoring drum machine state: {e}")
 
 
 class TunerGauge(Gtk.DrawingArea):
@@ -708,6 +1396,7 @@ class AudioRecorderApp(Adw.Application):
         self.set_accels_for_action("win.stop_all", ["<Control>period"])
         self.set_accels_for_action("win.toggle_monitoring", ["<Control>l"])
         self.set_accels_for_action("win.show_tuner", ["<Control>u"])
+        self.set_accels_for_action("win.show_drum_machine", ["<Control>d"])
         self.set_accels_for_action("win.show_help", ["F1"])
         self.set_accels_for_action("win.show_shortcuts", ["<Control>question"])
 
@@ -806,6 +1495,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
     stop_all_btn = Gtk.Template.Child()
     monitor_toggle = Gtk.Template.Child()
     tuner_btn = Gtk.Template.Child()
+    drum_machine_btn = Gtk.Template.Child()
     status_label = Gtk.Template.Child()
     track_list = Gtk.Template.Child()
     
@@ -814,6 +1504,9 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         
         self.playing_tracks = set()
         self.monitor_latency = '64'
+        self.drum_machine_panel = None
+        self.drum_machine_visible = False
+        self._pending_drum_machine_state = None
         
         # Connect signals
         self.add_track_btn.connect("clicked", self.on_add_track)
@@ -821,6 +1514,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         self.stop_all_btn.connect("clicked", self.on_stop_all)
         self.monitor_toggle.connect("toggled", self.on_monitor_toggled)
         self.tuner_btn.connect("clicked", lambda btn: self.on_show_tuner(None, None))
+        self.drum_machine_btn.connect("toggled", self._on_drum_machine_btn_toggled)
         
         # Create actions
         self.create_actions()
@@ -843,6 +1537,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             ("stop_all", lambda a, p: self.stop_all_playback()),
             ("toggle_monitoring", self.on_toggle_monitoring_action),
             ("show_tuner", self.on_show_tuner),
+            ("show_drum_machine", self.on_show_drum_machine),
             ("show_help", self.on_show_help),
             ("show_shortcuts", self.on_show_shortcuts),
             ("about", self.on_about),
@@ -959,6 +1654,11 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         app.project_file = None
         app.project_dirty = False
         
+        # Reset drum machine to defaults
+        self._pending_drum_machine_state = None
+        if self.drum_machine_panel is not None:
+            self.drum_machine_panel.reset_to_defaults()
+        
         self.add_track()
         app.project_dirty = False
         self.status_label.set_label("New project created")
@@ -1026,6 +1726,15 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                     row.play_btn.set_sensitive(True)
             
             app.next_track_number = project_data.get('next_track_number', len(app.tracks) + 1)
+            
+            # Load drum machine state if present in project
+            if 'drum_machine' in project_data:
+                if self.drum_machine_panel is not None:
+                    self.drum_machine_panel.set_state(project_data['drum_machine'])
+                else:
+                    # Store for later when drum machine is first opened
+                    self._pending_drum_machine_state = project_data['drum_machine']
+            
             app.project_dirty = False
             app.set_recent_project(project_path)
             self.status_label.set_label("Project loaded")
@@ -1097,6 +1806,10 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                 'tracks': tracks_data,
                 'next_track_number': app.next_track_number
             }
+            
+            # Include drum machine state if it exists
+            if self.drum_machine_panel is not None:
+                project_data['drum_machine'] = self.drum_machine_panel.get_state()
             
             with open(project_file, 'w') as f:
                 json.dump(project_data, f, indent=2)
@@ -1746,6 +2459,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             ]),
             ("Tools", [
                 ("Chromatic Tuner", "<Control>u"),
+                ("Drum Machine", "<Control>d"),
             ]),
             ("Export", [
                 ("Export Tracks", "<Control><Shift>t"),
@@ -1774,6 +2488,57 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         """Open the chromatic tuner dialog"""
         tuner = TunerDialog(self)
         tuner.present(self)
+    
+    def _on_drum_machine_btn_toggled(self, btn):
+        """Handle drum machine toggle button"""
+        if btn.get_active() != self.drum_machine_visible:
+            self.on_show_drum_machine(None, None)
+    
+    def on_show_drum_machine(self, action, param):
+        """Toggle the drum machine panel"""
+        if self.drum_machine_panel is None:
+            # Create the drum machine panel
+            self.drum_machine_panel = DrumMachinePanel()
+            
+            # Load pending state from project if available
+            if hasattr(self, '_pending_drum_machine_state') and self._pending_drum_machine_state:
+                self.drum_machine_panel.set_state(self._pending_drum_machine_state)
+                self._pending_drum_machine_state = None
+            
+            # Connect to changes to mark project dirty
+            self.drum_machine_panel.connect_dirty_callback(self._on_drum_machine_changed)
+            
+            # Find the main content box by going up from status_label
+            # status_label -> main_box
+            main_box = self.status_label.get_parent()
+            if main_box and hasattr(main_box, 'append'):
+                main_box.append(self.drum_machine_panel)
+            else:
+                # Fallback: traverse from track_list
+                widget = self.track_list
+                while widget is not None:
+                    parent = widget.get_parent()
+                    if parent and isinstance(parent, Gtk.Box):
+                        parent.append(self.drum_machine_panel)
+                        break
+                    widget = parent
+        
+        # Toggle visibility
+        self.drum_machine_visible = not self.drum_machine_visible
+        self.drum_machine_panel.set_visible(self.drum_machine_visible)
+        
+        # Sync toggle button state
+        if self.drum_machine_btn.get_active() != self.drum_machine_visible:
+            self.drum_machine_btn.set_active(self.drum_machine_visible)
+        
+        if not self.drum_machine_visible and self.drum_machine_panel:
+            self.drum_machine_panel.cleanup()
+    
+    def _on_drum_machine_changed(self):
+        """Called when drum machine state changes - mark project dirty"""
+        app = self.get_application()
+        app.project_dirty = True
+        self.update_title()
     
     def on_show_help(self, action, param):
         if os.path.exists(HELP_DIR):

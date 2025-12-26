@@ -54,10 +54,11 @@
 
   <section id="volume-control">
     <title>Adjusting Volume</title>
-    <p>Each track has its own volume slider to control its loudness in the mix:</p>
+    <p>Each track has its own volume slider located next to the control buttons:</p>
     <list>
       <item><p>Drag the volume slider left to decrease volume, right to increase.</p></item>
       <item><p>Volume ranges from 0% (silent) to 100% (full volume).</p></item>
+      <item><p>Hover over the slider to see the current volume percentage.</p></item>
       <item><p>Volume changes are applied instantly during playback.</p></item>
       <item><p>Volume settings are saved with your project.</p></item>
     </list>

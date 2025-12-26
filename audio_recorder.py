@@ -36,6 +36,7 @@ class Track:
         self.playing = False
         self.paused = False
         self.muted = False
+        self.volume = 1.0  # Volume level 0.0 to 1.0
         self.pipeline = None  # GStreamer pipeline for playback
 
 
@@ -127,13 +128,12 @@ class DrumGrid(Gtk.DrawingArea):
         playhead_color = (0.3, 0.6, 1.0)
         text_color = (0.9, 0.9, 0.9)
         
-        # Layout
-        label_width = 75
-        header_height = 22
-        grid_x = label_width
+        # Layout (no label area - labels are in separate panel)
+        header_height = 16
+        grid_x = 2
         grid_y = header_height
-        grid_width = width - label_width - 5
-        grid_height = height - header_height - 5
+        grid_width = width - 4
+        grid_height = height - header_height - 4
         
         num_drums = len(self.dm.drum_order)
         num_steps = self.dm.steps_per_bar * self.dm.num_bars
@@ -171,13 +171,6 @@ class DrumGrid(Gtk.DrawingArea):
                 extents = cr.text_extents(text)
                 cr.move_to(x - extents.width / 2, header_height - 8)
                 cr.show_text(text)
-        
-        # Draw drum labels
-        cr.set_font_size(11)
-        for i, drum_name in enumerate(self.dm.drum_order):
-            y = grid_y + i * cell_height + cell_height / 2 + 4
-            cr.move_to(5, y)
-            cr.show_text(drum_name)
         
         # Draw grid cells
         for row, drum_name in enumerate(self.dm.drum_order):
@@ -258,16 +251,15 @@ class DrumGrid(Gtk.DrawingArea):
     
     def _on_click(self, gesture, n_press, x, y):
         """Handle mouse click to toggle cells"""
-        # Calculate which cell was clicked
-        label_width = 75
-        header_height = 22
-        grid_x = label_width
+        # Calculate which cell was clicked (no label area - labels are in separate panel)
+        header_height = 16
+        grid_x = 2
         grid_y = header_height
         
         width = self.get_width()
         height = self.get_height()
-        grid_width = width - label_width - 5
-        grid_height = height - header_height - 5
+        grid_width = width - 4
+        grid_height = height - header_height - 4
         
         num_drums = len(self.dm.drum_order)
         num_steps = self.dm.steps_per_bar * self.dm.num_bars
@@ -316,6 +308,8 @@ class DrumMachinePanel(Gtk.Box):
         self.drum_order = ["Kick", "Snare", "HH Closed", "HH Open", "Tom Hi", "Tom Mid", "Tom Lo", "Crash", "Ride", "Cowbell"]
         self.pattern = {drum: [False] * (self.steps_per_bar * self.num_bars) 
                        for drum in GM_DRUMS.keys()}
+        # Volume per drum (0-127 MIDI velocity, default 100)
+        self.volumes = {drum: 100 for drum in GM_DRUMS.keys()}
         
         # MIDI/Audio - initialized lazily on first play
         self.pipeline = None
@@ -403,25 +397,22 @@ class DrumMachinePanel(Gtk.Box):
         print("Could not start FluidSynth with any audio driver.")
     
     def _build_ui(self):
-        """Build the drum machine UI"""
+        """Build the drum machine UI - compact layout"""
         # Add CSS class for styling
         self.add_css_class("card")
-        self.set_margin_top(6)
-        self.set_margin_bottom(6)
-        self.set_margin_start(6)
-        self.set_margin_end(6)
+        self.set_margin_top(2)
+        self.set_margin_bottom(0)
+        self.set_margin_start(0)
+        self.set_margin_end(0)
+        # Don't expand vertically - fixed height
+        self.set_vexpand(False)
         
-        # Top controls bar
-        controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        controls.set_margin_start(8)
-        controls.set_margin_end(8)
-        controls.set_margin_top(8)
-        controls.set_margin_bottom(4)
-        
-        # Title label
-        title = Gtk.Label(label="Drum Machine")
-        title.add_css_class("heading")
-        controls.append(title)
+        # Top controls bar - compact
+        controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        controls.set_margin_start(4)
+        controls.set_margin_end(4)
+        controls.set_margin_top(4)
+        controls.set_margin_bottom(2)
         
         # Play/Stop button
         self.play_btn = Gtk.Button.new_from_icon_name("media-playback-start-symbolic")
@@ -439,14 +430,10 @@ class DrumMachinePanel(Gtk.Box):
         clear_btn.connect("clicked", self._on_clear)
         controls.append(clear_btn)
         
-        # Spacer
-        spacer1 = Gtk.Box()
-        spacer1.set_hexpand(True)
-        controls.append(spacer1)
-        
         # Tempo control
         tempo_label = Gtk.Label(label="BPM")
         tempo_label.add_css_class("dim-label")
+        tempo_label.add_css_class("caption")
         controls.append(tempo_label)
         
         self.tempo_spin = Gtk.SpinButton.new_with_range(40, 240, 1)
@@ -454,8 +441,14 @@ class DrumMachinePanel(Gtk.Box):
         self.tempo_spin.connect("value-changed", self._on_tempo_changed)
         controls.append(self.tempo_spin)
         
-        # Time signature: numerator / denominator (e.g., 5/8 = 5 eighth notes per bar)
+        # Spacer
+        spacer1 = Gtk.Box()
+        spacer1.set_hexpand(True)
+        controls.append(spacer1)
+        
+        # Time signature: numerator / denominator
         time_sig_label = Gtk.Label(label="Time:")
+        time_sig_label.add_css_class("caption")
         controls.append(time_sig_label)
         
         # Numerator: total note units per bar (1-32)
@@ -469,7 +462,7 @@ class DrumMachinePanel(Gtk.Box):
         slash_label = Gtk.Label(label="/")
         controls.append(slash_label)
         
-        # Denominator: note value (2=half, 4=quarter, 8=eighth, 16=sixteenth, 32=thirty-second)
+        # Denominator
         denominator_options = ["2", "4", "8", "16", "32"]
         self.denominator_dropdown = Gtk.DropDown.new_from_strings(denominator_options)
         denom_values = [2, 4, 8, 16, 32]
@@ -480,10 +473,62 @@ class DrumMachinePanel(Gtk.Box):
         
         self.append(controls)
         
-        # Drum grid
+        # Grid and drum controls container
+        grid_container = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        
+        # Left panel: drum names and volume sliders (compact)
+        drum_panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        drum_panel.set_margin_start(2)
+        drum_panel.set_margin_end(2)
+        
+        # Header spacer to align with grid header
+        header_spacer = Gtk.Box()
+        header_spacer.set_size_request(-1, 16)
+        drum_panel.append(header_spacer)
+        
+        # Create drum name + volume slider for each drum (single row: name then volume)
+        self.volume_scales = {}
+        drum_row_height = 22  # Height per drum row
+        for drum_name in self.drum_order:
+            # Container for this drum (name and volume on same row)
+            drum_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+            drum_box.set_size_request(-1, drum_row_height)
+            
+            # Drum name label (full name)
+            name_label = Gtk.Label(label=drum_name)
+            name_label.set_halign(Gtk.Align.START)
+            name_label.set_xalign(0)
+            name_label.set_size_request(65, -1)
+            name_label.add_css_class("caption")
+            drum_box.append(name_label)
+            
+            # Volume slider next to name - expands to fill available space
+            scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 127, 1)
+            vol_value = self.volumes.get(drum_name, 100)
+            scale.set_value(vol_value)
+            scale.set_draw_value(False)
+            scale.set_hexpand(True)  # Expand to fill space
+            percent = int(vol_value * 100 / 127)
+            scale.set_tooltip_text(f"{drum_name} volume: {percent}%")
+            scale.connect("value-changed", self._on_volume_changed, drum_name)
+            self.volume_scales[drum_name] = scale
+            drum_box.append(scale)
+            
+            drum_panel.append(drum_box)
+        
+        # Drum panel expands to fill available space
+        drum_panel.set_hexpand(True)
+        grid_container.append(drum_panel)
+        
+        # Drum grid - fixed size (does not expand)
+        # Height = header (16) + drums * row_height + padding
+        grid_height = 16 + len(self.drum_order) * drum_row_height + 2
         self.grid = DrumGrid(self)
-        self.grid.set_size_request(-1, 280)  # Height for 10 drums
-        self.append(self.grid)
+        self.grid.set_size_request(300, grid_height)  # Fixed width
+        self.grid.set_hexpand(False)
+        grid_container.append(self.grid)
+        
+        self.append(grid_container)
     
     def connect_dirty_callback(self, callback):
         """Connect a callback to be called when state changes"""
@@ -511,6 +556,15 @@ class DrumMachinePanel(Gtk.Box):
         """Handle tempo change - takes effect on next step automatically"""
         self.tempo = int(spin.get_value())
         # No need to restart timer - each step schedules the next with current tempo
+        self._mark_dirty()
+    
+    def _on_volume_changed(self, scale, drum_name):
+        """Handle volume change for a drum"""
+        value = int(scale.get_value())
+        self.volumes[drum_name] = value
+        # Update tooltip with percentage (127 = 100%)
+        percent = int(value * 100 / 127)
+        scale.set_tooltip_text(f"{drum_name} volume: {percent}%")
         self._mark_dirty()
     
     def _on_time_sig_changed(self, dropdown, param):
@@ -638,9 +692,10 @@ class DrumMachinePanel(Gtk.Box):
             return
         
         try:
-            # Send MIDI note on channel 9 (drums), velocity 100
+            # Send MIDI note on channel 9 (drums) with per-drum volume
             # FluidSynth shell command: noteon channel key velocity
-            self.fluidsynth_proc.stdin.write(f"noteon 9 {midi_note} 100\n")
+            velocity = self.volumes.get(drum_name, 100)
+            self.fluidsynth_proc.stdin.write(f"noteon 9 {midi_note} {velocity}\n")
             self.fluidsynth_proc.stdin.flush()
         except BrokenPipeError:
             print("FluidSynth connection lost, attempting restart...")
@@ -702,6 +757,12 @@ class DrumMachinePanel(Gtk.Box):
             self.pattern[drum] = [False] * total_steps
         self._load_preset_pattern()
         
+        # Reset volumes to default (100)
+        for drum in GM_DRUMS.keys():
+            self.volumes[drum] = 100
+            if drum in self.volume_scales:
+                self.volume_scales[drum].set_value(100)
+        
         self.grid.queue_draw()
     
     def get_state(self):
@@ -711,7 +772,8 @@ class DrumMachinePanel(Gtk.Box):
             'time_sig_numerator': self.time_sig_numerator,
             'time_sig_denominator': self.time_sig_denominator,
             'num_bars': self.num_bars,
-            'pattern': {drum: list(steps) for drum, steps in self.pattern.items()}
+            'pattern': {drum: list(steps) for drum, steps in self.pattern.items()},
+            'volumes': dict(self.volumes)
         }
     
     def set_state(self, state):
@@ -755,6 +817,14 @@ class DrumMachinePanel(Gtk.Box):
                         self.pattern[drum] = (saved_steps + [False] * total_steps)[:total_steps]
                     else:
                         self.pattern[drum] = [False] * total_steps
+            
+            # Restore volumes
+            if 'volumes' in state:
+                for drum in GM_DRUMS.keys():
+                    if drum in state['volumes']:
+                        self.volumes[drum] = state['volumes'][drum]
+                        if drum in self.volume_scales:
+                            self.volume_scales[drum].set_value(self.volumes[drum])
             
             # Update the grid
             self._update_grid_size()
@@ -1402,14 +1472,17 @@ class AudioRecorderApp(Adw.Application):
 
 
 @Gtk.Template(filename=os.path.join(UI_DIR, 'track-row.ui'))
-class TrackRow(Adw.ActionRow):
+class TrackRow(Gtk.ListBoxRow):
     __gtype_name__ = 'TrackRow'
     
     # Template children
+    track_label = Gtk.Template.Child()
+    status_label = Gtk.Template.Child()
     edit_btn = Gtk.Template.Child()
     record_btn = Gtk.Template.Child()
     stop_btn = Gtk.Template.Child()
     play_btn = Gtk.Template.Child()
+    volume_scale = Gtk.Template.Child()
     mute_btn = Gtk.Template.Child()
     delete_btn = Gtk.Template.Child()
     
@@ -1418,14 +1491,20 @@ class TrackRow(Adw.ActionRow):
         self.track = track
         self.window = window
         
-        self.set_title(track.name)
-        self.set_subtitle("Ready")
+        self.track_label.set_text(track.name)
+        self.status_label.set_text("Ready")
+        
+        # Set initial volume and tooltip
+        vol_percent = int(track.volume * 100)
+        self.volume_scale.set_value(vol_percent)
+        self.volume_scale.set_tooltip_text(f"Track volume: {vol_percent}%")
         
         # Connect signals
         self.edit_btn.connect("clicked", self.on_edit_clicked)
         self.record_btn.connect("clicked", self.on_record_clicked)
         self.stop_btn.connect("clicked", self.on_stop_clicked)
         self.play_btn.connect("clicked", self.on_play_clicked)
+        self.volume_scale.connect("value-changed", self.on_volume_changed)
         self.mute_btn.connect("toggled", self.on_mute_toggled)
         self.delete_btn.connect("clicked", self.on_delete_clicked)
     
@@ -1444,6 +1523,9 @@ class TrackRow(Adw.ActionRow):
     def on_mute_toggled(self, button):
         self.window.on_track_mute(self)
     
+    def on_volume_changed(self, scale):
+        self.window.on_track_volume_changed(self)
+    
     def on_delete_clicked(self, button):
         self.window.on_track_delete(self)
     
@@ -1452,10 +1534,10 @@ class TrackRow(Adw.ActionRow):
         self.stop_btn.set_sensitive(recording)
         self.play_btn.set_sensitive(False)
         if recording:
-            self.set_subtitle("Recording…")
+            self.status_label.set_text("Recording…")
             self.add_css_class("error")
         else:
-            self.set_subtitle("Stopped")
+            self.status_label.set_text("Stopped")
             self.remove_css_class("error")
             if self.track.temp_file and os.path.exists(self.track.temp_file):
                 self.play_btn.set_sensitive(True)
@@ -1463,13 +1545,13 @@ class TrackRow(Adw.ActionRow):
     def set_playing(self, playing, paused=False):
         if playing:
             self.play_btn.set_icon_name("media-playback-pause-symbolic")
-            self.set_subtitle("Playing…" if not self.track.muted else "Playing (muted)…")
+            self.status_label.set_text("Playing…" if not self.track.muted else "Playing (muted)…")
         elif paused:
             self.play_btn.set_icon_name("media-playback-start-symbolic")
-            self.set_subtitle("Paused" if not self.track.muted else "Paused (muted)")
+            self.status_label.set_text("Paused" if not self.track.muted else "Paused (muted)")
         else:
             self.play_btn.set_icon_name("media-playback-start-symbolic")
-            self.set_subtitle("Ready")
+            self.status_label.set_text("Ready")
     
     def set_muted(self, muted):
         if muted:
@@ -1480,9 +1562,9 @@ class TrackRow(Adw.ActionRow):
             self.mute_btn.set_tooltip_text("Mute track")
         
         if self.track.playing:
-            self.set_subtitle("Playing (muted)…" if muted else "Playing…")
+            self.status_label.set_text("Playing (muted)…" if muted else "Playing…")
         elif self.track.paused:
-            self.set_subtitle("Paused (muted)" if muted else "Paused")
+            self.status_label.set_text("Paused (muted)" if muted else "Paused")
 
 
 @Gtk.Template(filename=os.path.join(UI_DIR, 'window.ui'))
@@ -1501,6 +1583,9 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Start maximized by default
+        self.maximize()
         
         self.playing_tracks = set()
         self.monitor_latency = '64'
@@ -1717,10 +1802,21 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                     os.close(fd)
                     shutil.copy2(audio_file, track.temp_file)
                 
+                # Restore volume and muted state
+                track.volume = track_data.get('volume', 1.0)
+                track.muted = track_data.get('muted', False)
+                
                 app.tracks.append(track)
                 
                 row = TrackRow(track, self)
                 self.track_list.append(row)
+                
+                # Apply restored volume and muted state to UI
+                vol_percent = int(track.volume * 100)
+                row.volume_scale.set_value(vol_percent)
+                row.volume_scale.set_tooltip_text(f"Track volume: {vol_percent}%")
+                row.mute_btn.set_active(track.muted)
+                row.set_muted(track.muted)
                 
                 if track.temp_file:
                     row.play_btn.set_sensitive(True)
@@ -1799,7 +1895,9 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                     
                     tracks_data.append({
                         'name': track.name,
-                        'audio_file': os.path.join("audio", audio_filename)
+                        'audio_file': os.path.join("audio", audio_filename),
+                        'volume': track.volume,
+                        'muted': track.muted
                     })
             
             project_data = {
@@ -2098,8 +2196,11 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                     track.pipeline = Gst.ElementFactory.make("playbin", f"playbin-{track.name}")
                     track.pipeline.set_property("uri", f"file://{track.temp_file}")
                     
+                    # Apply volume (0 if muted, otherwise track volume)
                     if track.muted:
                         track.pipeline.set_property("volume", 0.0)
+                    else:
+                        track.pipeline.set_property("volume", track.volume)
                     
                     track.pipeline.set_state(Gst.State.PLAYING)
                     track.playing = True
@@ -2119,9 +2220,29 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         track.muted = row.mute_btn.get_active()
         
         if track.pipeline:
-            track.pipeline.set_property("volume", 0.0 if track.muted else 1.0)
+            if track.muted:
+                track.pipeline.set_property("volume", 0.0)
+            else:
+                track.pipeline.set_property("volume", track.volume)
         
         row.set_muted(track.muted)
+        app = self.get_application()
+        app.project_dirty = True
+    
+    def on_track_volume_changed(self, row):
+        track = row.track
+        value = row.volume_scale.get_value()
+        track.volume = value / 100.0
+        
+        # Update tooltip with percentage
+        row.volume_scale.set_tooltip_text(f"Track volume: {int(value)}%")
+        
+        # Apply volume to pipeline if playing and not muted
+        if track.pipeline and not track.muted:
+            track.pipeline.set_property("volume", track.volume)
+        
+        app = self.get_application()
+        app.project_dirty = True
     
     def on_track_rename(self, row):
         track = row.track
@@ -2147,7 +2268,7 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             new_name = entry.get_text().strip()
             if new_name:
                 row.track.name = new_name
-                row.set_title(new_name)
+                row.track_label.set_text(new_name)
                 app = self.get_application()
                 app.project_dirty = True
     
@@ -2234,8 +2355,11 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
                         track.pipeline = Gst.ElementFactory.make("playbin", f"playbin-{track.name}")
                         track.pipeline.set_property("uri", f"file://{track.temp_file}")
                         
+                        # Apply volume (0 if muted, otherwise track volume)
                         if track.muted:
                             track.pipeline.set_property("volume", 0.0)
+                        else:
+                            track.pipeline.set_property("volume", track.volume)
                         
                         track.pipeline.set_state(Gst.State.PLAYING)
                         track.playing = True

@@ -6,69 +6,141 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
 -->
 <interface>
   <requires lib="gtk" version="4.0"/>
-  <template class="TrackRow" parent="AdwActionRow">
-    <child type="prefix">
-      <object class="GtkButton" id="edit_btn">
-        <property name="icon-name">document-edit-symbolic</property>
-        <property name="tooltip-text">Rename track</property>
-        <property name="valign">3</property>
-        <style>
-          <class name="circular"/>
-          <class name="flat"/>
-        </style>
-      </object>
-    </child>
-    <child type="suffix">
-      <object class="GtkBox" id="controls_box">
-        <property name="orientation">0</property>
-        <property name="spacing">6</property>
-        <property name="valign">3</property>
+  <template class="TrackRow" parent="GtkListBoxRow">
+    <child>
+      <object class="GtkBox">
+        <property name="orientation">1</property>
+        <property name="spacing">2</property>
+        <property name="margin-start">8</property>
+        <property name="margin-end">8</property>
+        <property name="margin-top">4</property>
+        <property name="margin-bottom">4</property>
         <child>
-          <object class="GtkButton" id="record_btn">
-            <property name="icon-name">media-record-symbolic</property>
-            <property name="tooltip-text">Start recording</property>
-            <style>
-              <class name="circular"/>
-            </style>
+          <object class="GtkBox">
+            <property name="orientation">0</property>
+            <property name="spacing">4</property>
+            <child>
+              <object class="GtkButton" id="edit_btn">
+                <property name="icon-name">document-edit-symbolic</property>
+                <property name="tooltip-text">Rename track</property>
+                <property name="valign">3</property>
+                <style>
+                  <class name="flat"/>
+                  <class name="circular"/>
+                </style>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="track_label">
+                <property name="halign">1</property>
+                <property name="xalign">0</property>
+                <property name="ellipsize">3</property>
+                <style>
+                  <class name="heading"/>
+                </style>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="status_label">
+                <property name="halign">1</property>
+                <property name="hexpand">true</property>
+                <property name="xalign">0</property>
+                <style>
+                  <class name="dim-label"/>
+                  <class name="caption"/>
+                </style>
+              </object>
+            </child>
           </object>
         </child>
         <child>
-          <object class="GtkButton" id="stop_btn">
-            <property name="icon-name">media-playback-stop-symbolic</property>
-            <property name="tooltip-text">Stop recording</property>
-            <property name="sensitive">false</property>
-            <style>
-              <class name="circular"/>
-            </style>
-          </object>
-        </child>
-        <child>
-          <object class="GtkButton" id="play_btn">
-            <property name="icon-name">media-playback-start-symbolic</property>
-            <property name="tooltip-text">Play recording</property>
-            <property name="sensitive">false</property>
-            <style>
-              <class name="circular"/>
-            </style>
-          </object>
-        </child>
-        <child>
-          <object class="GtkToggleButton" id="mute_btn">
-            <property name="icon-name">audio-volume-high-symbolic</property>
-            <property name="tooltip-text">Mute track</property>
-            <style>
-              <class name="circular"/>
-            </style>
-          </object>
-        </child>
-        <child>
-          <object class="GtkButton" id="delete_btn">
-            <property name="icon-name">edit-delete-symbolic</property>
-            <property name="tooltip-text">Delete track</property>
-            <style>
-              <class name="circular"/>
-              <class name="destructive-action"/>
-            </style>
+          <object class="GtkBox">
+            <property name="orientation">0</property>
+            <property name="spacing">6</property>
+            <child>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <property name="spacing">2</property>
+                <style>
+                  <class name="linked"/>
+                </style>
+                <child>
+                  <object class="GtkButton" id="record_btn">
+                    <property name="icon-name">media-record-symbolic</property>
+                    <property name="tooltip-text">Start recording</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="stop_btn">
+                    <property name="icon-name">media-playback-stop-symbolic</property>
+                    <property name="tooltip-text">Stop recording</property>
+                    <property name="sensitive">false</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="play_btn">
+                    <property name="icon-name">media-playback-start-symbolic</property>
+                    <property name="tooltip-text">Play recording</property>
+                    <property name="sensitive">false</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToggleButton" id="mute_btn">
+                    <property name="icon-name">audio-volume-high-symbolic</property>
+                    <property name="tooltip-text">Mute track</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="delete_btn">
+                    <property name="icon-name">edit-delete-symbolic</property>
+                    <property name="tooltip-text">Delete track</property>
+                    <style>
+                      <class name="flat"/>
+                      <class name="destructive-action"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel">
+                <property name="label">Vol</property>
+                <style>
+                  <class name="dim-label"/>
+                  <class name="caption"/>
+                </style>
+              </object>
+            </child>
+            <child>
+              <object class="GtkScale" id="volume_scale">
+                <property name="orientation">0</property>
+                <property name="hexpand">true</property>
+                <property name="adjustment">
+                  <object class="GtkAdjustment">
+                    <property name="lower">0</property>
+                    <property name="upper">100</property>
+                    <property name="value">100</property>
+                    <property name="step-increment">1</property>
+                    <property name="page-increment">10</property>
+                  </object>
+                </property>
+                <property name="draw-value">false</property>
+                <property name="tooltip-text">Track volume</property>
+                <property name="valign">3</property>
+              </object>
+            </child>
           </object>
         </child>
       </object>

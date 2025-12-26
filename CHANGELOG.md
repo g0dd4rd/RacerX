@@ -4,6 +4,26 @@ All notable changes to Audio Recorder are documented in this file, organized by 
 
 ---
 
+## 2025-12-26
+
+### Added
+- **Track volume control** — Individual volume sliders (0-100%) for each audio track with real-time adjustment during playback
+- **Drum machine volume control** — Per-instrument volume sliders (0-127) for mixing drum patterns
+- **Extended drum kit** — 10 instruments: Kick, Snare, HH Closed, HH Open, Tom Hi, Tom Mid, Tom Lo, Crash, Ride, Cowbell
+- **Volume tooltips** — Volume sliders show percentage in tooltip (e.g., "Track volume: 85%")
+
+### Changed
+- **Window layout** — App now starts maximized with resizable panel layout (33%/67% split)
+- **Compact UI** — Reduced margins and spacing throughout for more efficient use of screen space
+- **Track row layout** — Two-row compact design: name/status on top, controls and volume on bottom
+- **Drum machine layout** — Single-row per instrument with name and volume slider side by side
+- **Panel alignment** — Audio tracks and drum machine panels aligned to the left with resizable divider
+
+### Fixed
+- **Volume state persistence** — Track and drum volumes are now saved/loaded with projects
+
+---
+
 ## 2025-12-08
 
 ### Added

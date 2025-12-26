@@ -1,58 +1,115 @@
 using Gtk 4.0;
-using Adw 1;
 
-template $TrackRow : Adw.ActionRow {
-  [prefix]
-  Gtk.Button edit_btn {
-    icon-name: "document-edit-symbolic";
-    tooltip-text: "Rename track";
-    valign: center;
+template $TrackRow : Gtk.ListBoxRow {
+  Gtk.Box {
+    orientation: vertical;
+    spacing: 2;
+    margin-start: 8;
+    margin-end: 8;
+    margin-top: 4;
+    margin-bottom: 4;
 
-    styles ["circular", "flat"]
-  }
+    // Row 1: Edit button, track name, status
+    Gtk.Box {
+      orientation: horizontal;
+      spacing: 4;
 
-  [suffix]
-  Gtk.Box controls_box {
-    orientation: horizontal;
-    spacing: 6;
-    valign: center;
+      Gtk.Button edit_btn {
+        icon-name: "document-edit-symbolic";
+        tooltip-text: "Rename track";
+        valign: center;
 
-    Gtk.Button record_btn {
-      icon-name: "media-record-symbolic";
-      tooltip-text: "Start recording";
+        styles ["flat", "circular"]
+      }
 
-      styles ["circular"]
+      Gtk.Label track_label {
+        halign: start;
+        xalign: 0;
+        ellipsize: end;
+        
+        styles ["heading"]
+      }
+
+      Gtk.Label status_label {
+        halign: start;
+        hexpand: true;
+        xalign: 0;
+        
+        styles ["dim-label", "caption"]
+      }
     }
 
-    Gtk.Button stop_btn {
-      icon-name: "media-playback-stop-symbolic";
-      tooltip-text: "Stop recording";
-      sensitive: false;
+    // Row 2: Controls and volume in one row
+    Gtk.Box {
+      orientation: horizontal;
+      spacing: 6;
 
-      styles ["circular"]
-    }
+      // Control buttons
+      Gtk.Box {
+        orientation: horizontal;
+        spacing: 2;
+        
+        styles ["linked"]
 
-    Gtk.Button play_btn {
-      icon-name: "media-playback-start-symbolic";
-      tooltip-text: "Play recording";
-      sensitive: false;
+        Gtk.Button record_btn {
+          icon-name: "media-record-symbolic";
+          tooltip-text: "Start recording";
 
-      styles ["circular"]
-    }
+          styles ["flat"]
+        }
 
-    Gtk.ToggleButton mute_btn {
-      icon-name: "audio-volume-high-symbolic";
-      tooltip-text: "Mute track";
+        Gtk.Button stop_btn {
+          icon-name: "media-playback-stop-symbolic";
+          tooltip-text: "Stop recording";
+          sensitive: false;
 
-      styles ["circular"]
-    }
+          styles ["flat"]
+        }
 
-    Gtk.Button delete_btn {
-      icon-name: "edit-delete-symbolic";
-      tooltip-text: "Delete track";
+        Gtk.Button play_btn {
+          icon-name: "media-playback-start-symbolic";
+          tooltip-text: "Play recording";
+          sensitive: false;
 
-      styles ["circular", "destructive-action"]
+          styles ["flat"]
+        }
+
+        Gtk.ToggleButton mute_btn {
+          icon-name: "audio-volume-high-symbolic";
+          tooltip-text: "Mute track";
+
+          styles ["flat"]
+        }
+
+        Gtk.Button delete_btn {
+          icon-name: "edit-delete-symbolic";
+          tooltip-text: "Delete track";
+
+          styles ["flat", "destructive-action"]
+        }
+      }
+
+      // Volume control
+      Gtk.Label {
+        label: "Vol";
+        
+        styles ["dim-label", "caption"]
+      }
+
+      Gtk.Scale volume_scale {
+        orientation: horizontal;
+        hexpand: true;
+        adjustment: Gtk.Adjustment {
+          lower: 0;
+          upper: 100;
+          value: 100;
+          step-increment: 1;
+          page-increment: 10;
+        };
+        draw-value: false;
+        tooltip-text: "Track volume";
+        valign: center;
+      }
     }
   }
 }
-

@@ -9,65 +9,70 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
   <template class="TrackRow" parent="GtkListBoxRow">
     <child>
       <object class="GtkBox">
-        <property name="orientation">1</property>
-        <property name="spacing">2</property>
-        <property name="margin-start">8</property>
-        <property name="margin-end">8</property>
+        <property name="orientation">0</property>
+        <property name="spacing">8</property>
+        <property name="margin-start">4</property>
+        <property name="margin-end">4</property>
         <property name="margin-top">4</property>
         <property name="margin-bottom">4</property>
         <child>
-          <object class="GtkBox">
-            <property name="orientation">0</property>
+          <object class="GtkBox" id="controls_panel">
+            <property name="orientation">1</property>
             <property name="spacing">4</property>
+            <property name="width-request">280</property>
+            <property name="hexpand">false</property>
             <child>
-              <object class="GtkButton" id="edit_btn">
-                <property name="icon-name">document-edit-symbolic</property>
-                <property name="tooltip-text">Rename track</property>
-                <property name="valign">3</property>
-                <style>
-                  <class name="flat"/>
-                  <class name="circular"/>
-                </style>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <property name="spacing">4</property>
+                <child>
+                  <object class="GtkButton" id="edit_btn">
+                    <property name="icon-name">document-edit-symbolic</property>
+                    <property name="tooltip-text">Rename track</property>
+                    <property name="valign">3</property>
+                    <style>
+                      <class name="flat"/>
+                      <class name="circular"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="track_label">
+                    <property name="halign">1</property>
+                    <property name="xalign">0</property>
+                    <property name="ellipsize">3</property>
+                    <property name="valign">3</property>
+                    <style>
+                      <class name="heading"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="status_label">
+                    <property name="halign">1</property>
+                    <property name="hexpand">true</property>
+                    <property name="xalign">0</property>
+                    <property name="valign">3</property>
+                    <style>
+                      <class name="dim-label"/>
+                      <class name="caption"/>
+                    </style>
+                  </object>
+                </child>
               </object>
             </child>
-            <child>
-              <object class="GtkLabel" id="track_label">
-                <property name="halign">1</property>
-                <property name="xalign">0</property>
-                <property name="ellipsize">3</property>
-                <style>
-                  <class name="heading"/>
-                </style>
-              </object>
-            </child>
-            <child>
-              <object class="GtkLabel" id="status_label">
-                <property name="halign">1</property>
-                <property name="hexpand">true</property>
-                <property name="xalign">0</property>
-                <style>
-                  <class name="dim-label"/>
-                  <class name="caption"/>
-                </style>
-              </object>
-            </child>
-          </object>
-        </child>
-        <child>
-          <object class="GtkBox">
-            <property name="orientation">0</property>
-            <property name="spacing">6</property>
             <child>
               <object class="GtkBox">
                 <property name="orientation">0</property>
                 <property name="spacing">2</property>
+                <property name="halign">1</property>
                 <style>
                   <class name="linked"/>
                 </style>
                 <child>
                   <object class="GtkButton" id="record_btn">
                     <property name="icon-name">media-record-symbolic</property>
-                    <property name="tooltip-text">Start recording</property>
+                    <property name="tooltip-text">Record</property>
                     <style>
                       <class name="flat"/>
                     </style>
@@ -76,7 +81,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                 <child>
                   <object class="GtkButton" id="stop_btn">
                     <property name="icon-name">media-playback-stop-symbolic</property>
-                    <property name="tooltip-text">Stop recording</property>
+                    <property name="tooltip-text">Stop</property>
                     <property name="sensitive">false</property>
                     <style>
                       <class name="flat"/>
@@ -86,7 +91,17 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                 <child>
                   <object class="GtkButton" id="play_btn">
                     <property name="icon-name">media-playback-start-symbolic</property>
-                    <property name="tooltip-text">Play recording</property>
+                    <property name="tooltip-text">Play</property>
+                    <property name="sensitive">false</property>
+                    <style>
+                      <class name="flat"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkToggleButton" id="loop_btn">
+                    <property name="icon-name">media-playlist-repeat-symbolic</property>
+                    <property name="tooltip-text">Loop</property>
                     <property name="sensitive">false</property>
                     <style>
                       <class name="flat"/>
@@ -96,7 +111,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                 <child>
                   <object class="GtkToggleButton" id="mute_btn">
                     <property name="icon-name">audio-volume-high-symbolic</property>
-                    <property name="tooltip-text">Mute track</property>
+                    <property name="tooltip-text">Mute</property>
                     <style>
                       <class name="flat"/>
                     </style>
@@ -105,7 +120,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                 <child>
                   <object class="GtkButton" id="delete_btn">
                     <property name="icon-name">edit-delete-symbolic</property>
-                    <property name="tooltip-text">Delete track</property>
+                    <property name="tooltip-text">Delete</property>
                     <style>
                       <class name="flat"/>
                       <class name="destructive-action"/>
@@ -115,30 +130,160 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
               </object>
             </child>
             <child>
-              <object class="GtkLabel">
-                <property name="label">Vol</property>
-                <style>
-                  <class name="dim-label"/>
-                  <class name="caption"/>
-                </style>
+              <object class="GtkBox">
+                <property name="orientation">0</property>
+                <property name="spacing">4</property>
+                <child>
+                  <object class="GtkLabel">
+                    <property name="label">Vol</property>
+                    <style>
+                      <class name="dim-label"/>
+                      <class name="caption"/>
+                    </style>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkScale" id="volume_scale">
+                    <property name="orientation">0</property>
+                    <property name="hexpand">true</property>
+                    <property name="adjustment">
+                      <object class="GtkAdjustment">
+                        <property name="lower">0</property>
+                        <property name="upper">100</property>
+                        <property name="value">100</property>
+                        <property name="step-increment">1</property>
+                        <property name="page-increment">10</property>
+                      </object>
+                    </property>
+                    <property name="draw-value">false</property>
+                    <property name="tooltip-text">Track volume</property>
+                    <property name="valign">3</property>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkBox" id="waveform_panel">
+            <property name="orientation">1</property>
+            <property name="spacing">2</property>
+            <property name="hexpand">true</property>
+            <child>
+              <object class="GtkFrame" id="waveform_frame">
+                <property name="hexpand">true</property>
+                <property name="vexpand">true</property>
+                <child>
+                  <object class="GtkBox" id="waveform_container">
+                    <property name="orientation">1</property>
+                  </object>
+                </child>
               </object>
             </child>
             <child>
-              <object class="GtkScale" id="volume_scale">
+              <object class="GtkBox">
                 <property name="orientation">0</property>
-                <property name="hexpand">true</property>
-                <property name="adjustment">
-                  <object class="GtkAdjustment">
-                    <property name="lower">0</property>
-                    <property name="upper">100</property>
-                    <property name="value">100</property>
-                    <property name="step-increment">1</property>
-                    <property name="page-increment">10</property>
+                <property name="spacing">4</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">0</property>
+                    <property name="spacing">2</property>
+                    <style>
+                      <class name="linked"/>
+                    </style>
+                    <child>
+                      <object class="GtkButton" id="zoom_in_btn">
+                        <property name="icon-name">zoom-in-symbolic</property>
+                        <property name="tooltip-text">Zoom in</property>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="zoom_out_btn">
+                        <property name="icon-name">zoom-out-symbolic</property>
+                        <property name="tooltip-text">Zoom out</property>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="zoom_fit_btn">
+                        <property name="icon-name">zoom-fit-best-symbolic</property>
+                        <property name="tooltip-text">Fit to view</property>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
                   </object>
-                </property>
-                <property name="draw-value">false</property>
-                <property name="tooltip-text">Track volume</property>
-                <property name="valign">3</property>
+                </child>
+                <child>
+                  <object class="GtkBox">
+                    <property name="hexpand">true</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkBox">
+                    <property name="orientation">0</property>
+                    <property name="spacing">2</property>
+                    <style>
+                      <class name="linked"/>
+                    </style>
+                    <child>
+                      <object class="GtkButton" id="loop_selection_btn">
+                        <property name="icon-name">media-playlist-repeat-symbolic</property>
+                        <property name="tooltip-text">Loop selection</property>
+                        <property name="sensitive">false</property>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="trim_btn">
+                        <property name="icon-name">edit-cut-symbolic</property>
+                        <property name="tooltip-text">Trim to selection</property>
+                        <property name="sensitive">false</property>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="copy_btn">
+                        <property name="icon-name">edit-copy-symbolic</property>
+                        <property name="tooltip-text">Copy</property>
+                        <property name="sensitive">false</property>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="paste_btn">
+                        <property name="icon-name">edit-paste-symbolic</property>
+                        <property name="tooltip-text">Paste</property>
+                        <property name="sensitive">false</property>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="delete_selection_btn">
+                        <property name="icon-name">user-trash-symbolic</property>
+                        <property name="tooltip-text">Delete selection</property>
+                        <property name="sensitive">false</property>
+                        <style>
+                          <class name="flat"/>
+                        </style>
+                      </object>
+                    </child>
+                  </object>
+                </child>
               </object>
             </child>
           </object>

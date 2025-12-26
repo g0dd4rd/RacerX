@@ -38,6 +38,17 @@ class Track:
         self.muted = False
         self.volume = 1.0  # Volume level 0.0 to 1.0
         self.pipeline = None  # GStreamer pipeline for playback
+        
+        # Waveform and editing properties
+        self.waveform_data = None  # Cached waveform peaks for visualization
+        self.sample_rate = 48000  # Default sample rate
+        self.duration = 0.0  # Duration in seconds
+        self.loop_enabled = False
+        self.loop_start = 0.0  # Loop start in seconds
+        self.loop_end = 0.0  # Loop end in seconds
+        self.trim_start = 0.0  # Trim start in seconds
+        self.trim_end = 0.0  # Trim end in seconds (0 = no trim)
+        self.clipboard_data = None  # For copy/paste operations
 
 
 # ==================== Chromatic Tuner ====================
@@ -94,6 +105,506 @@ GM_DRUMS = {
     "Rimshot": 37,
     "Cowbell": 56,
 }
+
+
+class WaveformView(Gtk.DrawingArea):
+    """Widget for displaying and editing audio waveforms"""
+    
+    def __init__(self, track_row):
+        super().__init__()
+        self.track_row = track_row
+        self.track = track_row.track
+        
+        # View state
+        self.zoom_level = 1.0  # 1.0 = fit entire track, higher = zoomed in
+        self.scroll_offset = 0.0  # Offset in seconds from start
+        self.pixels_per_second = 100  # Base resolution
+        
+        # Selection state
+        self.selection_start = None  # Start time in seconds
+        self.selection_end = None  # End time in seconds
+        self.is_selecting = False
+        self.drag_start_x = 0
+        
+        # Playhead position
+        self.playhead_position = 0.0
+        
+        # Setup widget
+        self.set_hexpand(True)
+        self.set_vexpand(True)
+        self.set_size_request(-1, 80)
+        self.set_draw_func(self._draw)
+        
+        # Enable mouse interaction
+        click = Gtk.GestureClick.new()
+        click.connect("pressed", self._on_press)
+        click.connect("released", self._on_release)
+        self.add_controller(click)
+        
+        drag = Gtk.GestureDrag.new()
+        drag.connect("drag-begin", self._on_drag_begin)
+        drag.connect("drag-update", self._on_drag_update)
+        drag.connect("drag-end", self._on_drag_end)
+        self.add_controller(drag)
+        
+        # Scroll for zoom
+        scroll = Gtk.EventControllerScroll.new(Gtk.EventControllerScrollFlags.VERTICAL)
+        scroll.connect("scroll", self._on_scroll)
+        self.add_controller(scroll)
+        
+        self.set_can_focus(True)
+        self.set_focusable(True)
+    
+    def load_waveform(self):
+        """Load waveform data from the track's audio file"""
+        if not self.track.temp_file or not os.path.exists(self.track.temp_file):
+            self.track.waveform_data = None
+            return
+        
+        try:
+            import wave
+            with wave.open(self.track.temp_file, 'rb') as wf:
+                self.track.sample_rate = wf.getframerate()
+                n_channels = wf.getnchannels()
+                n_frames = wf.getnframes()
+                self.track.duration = n_frames / self.track.sample_rate
+                
+                # Read all frames
+                raw_data = wf.readframes(n_frames)
+                
+                # Convert to numpy array
+                if wf.getsampwidth() == 2:  # 16-bit
+                    audio_data = np.frombuffer(raw_data, dtype=np.int16).astype(np.float32)
+                    audio_data /= 32768.0
+                elif wf.getsampwidth() == 4:  # 32-bit
+                    audio_data = np.frombuffer(raw_data, dtype=np.int32).astype(np.float32)
+                    audio_data /= 2147483648.0
+                else:  # 8-bit
+                    audio_data = np.frombuffer(raw_data, dtype=np.uint8).astype(np.float32)
+                    audio_data = (audio_data - 128) / 128.0
+                
+                # Mix to mono if stereo
+                if n_channels == 2:
+                    audio_data = (audio_data[0::2] + audio_data[1::2]) / 2
+                
+                # Downsample for visualization (target ~1000 points for display)
+                target_points = max(1000, int(self.track.duration * 100))
+                if len(audio_data) > target_points:
+                    chunk_size = len(audio_data) // target_points
+                    # Compute peaks for each chunk
+                    peaks = []
+                    for i in range(0, len(audio_data) - chunk_size, chunk_size):
+                        chunk = audio_data[i:i + chunk_size]
+                        peaks.append((np.min(chunk), np.max(chunk)))
+                    self.track.waveform_data = peaks
+                else:
+                    # Use raw data as peaks
+                    self.track.waveform_data = [(v, v) for v in audio_data]
+                
+                # Set trim end to duration if not set
+                if self.track.trim_end == 0:
+                    self.track.trim_end = self.track.duration
+                    
+        except Exception as e:
+            print(f"Error loading waveform: {e}")
+            self.track.waveform_data = None
+        
+        self.queue_draw()
+    
+    def _draw(self, area, cr, width, height):
+        """Draw the waveform"""
+        import cairo
+        
+        # Colors
+        bg_color = (0.15, 0.15, 0.17)
+        waveform_color = (0.3, 0.7, 0.5)
+        selection_color = (0.3, 0.5, 0.8, 0.3)
+        grid_color = (0.25, 0.25, 0.27)
+        playhead_color = (1.0, 0.3, 0.3)
+        loop_color = (0.8, 0.6, 0.2, 0.3)
+        trim_color = (0.5, 0.5, 0.5, 0.5)
+        
+        # Background
+        cr.set_source_rgb(*bg_color)
+        cr.paint()
+        
+        if not self.track.waveform_data or self.track.duration == 0:
+            # Draw placeholder text
+            cr.set_source_rgb(0.5, 0.5, 0.5)
+            cr.select_font_face("Sans", cairo.FONT_SLANT_NORMAL, cairo.FONT_WEIGHT_NORMAL)
+            cr.set_font_size(12)
+            text = "No audio recorded" if not self.track.temp_file else "Loading..."
+            extents = cr.text_extents(text)
+            cr.move_to((width - extents.width) / 2, (height + extents.height) / 2)
+            cr.show_text(text)
+            return
+        
+        # Calculate visible range based on zoom and scroll
+        visible_duration = self.track.duration / self.zoom_level
+        start_time = self.scroll_offset
+        end_time = min(start_time + visible_duration, self.track.duration)
+        
+        # Draw time grid
+        cr.set_source_rgb(*grid_color)
+        cr.set_line_width(1)
+        
+        # Calculate grid interval based on zoom
+        if visible_duration > 60:
+            grid_interval = 10.0  # 10 second intervals
+        elif visible_duration > 10:
+            grid_interval = 1.0  # 1 second intervals
+        elif visible_duration > 2:
+            grid_interval = 0.5  # 0.5 second intervals
+        else:
+            grid_interval = 0.1  # 0.1 second intervals
+        
+        t = (start_time // grid_interval) * grid_interval
+        while t <= end_time:
+            if t >= start_time:
+                x = (t - start_time) / visible_duration * width
+                cr.move_to(x, 0)
+                cr.line_to(x, height)
+                cr.stroke()
+            t += grid_interval
+        
+        # Draw trimmed regions (grayed out)
+        if self.track.trim_start > start_time:
+            trim_x = (self.track.trim_start - start_time) / visible_duration * width
+            cr.set_source_rgba(*trim_color)
+            cr.rectangle(0, 0, trim_x, height)
+            cr.fill()
+        
+        if self.track.trim_end < end_time and self.track.trim_end > 0:
+            trim_x = (self.track.trim_end - start_time) / visible_duration * width
+            cr.set_source_rgba(*trim_color)
+            cr.rectangle(trim_x, 0, width - trim_x, height)
+            cr.fill()
+        
+        # Draw loop region
+        if self.track.loop_enabled and self.track.loop_start < self.track.loop_end:
+            loop_start_x = (self.track.loop_start - start_time) / visible_duration * width
+            loop_end_x = (self.track.loop_end - start_time) / visible_duration * width
+            cr.set_source_rgba(*loop_color)
+            cr.rectangle(loop_start_x, 0, loop_end_x - loop_start_x, height)
+            cr.fill()
+        
+        # Draw selection
+        if self.selection_start is not None and self.selection_end is not None:
+            sel_start = min(self.selection_start, self.selection_end)
+            sel_end = max(self.selection_start, self.selection_end)
+            sel_start_x = (sel_start - start_time) / visible_duration * width
+            sel_end_x = (sel_end - start_time) / visible_duration * width
+            cr.set_source_rgba(*selection_color)
+            cr.rectangle(sel_start_x, 0, sel_end_x - sel_start_x, height)
+            cr.fill()
+        
+        # Draw waveform
+        cr.set_source_rgb(*waveform_color)
+        cr.set_line_width(1)
+        
+        center_y = height / 2
+        peaks = self.track.waveform_data
+        total_peaks = len(peaks)
+        
+        # Calculate which peaks to draw
+        start_idx = int(start_time / self.track.duration * total_peaks)
+        end_idx = int(end_time / self.track.duration * total_peaks)
+        visible_peaks = peaks[start_idx:end_idx]
+        
+        if visible_peaks:
+            for i, (min_val, max_val) in enumerate(visible_peaks):
+                x = i / len(visible_peaks) * width
+                y_min = center_y - min_val * (height / 2 - 2)
+                y_max = center_y - max_val * (height / 2 - 2)
+                cr.move_to(x, y_min)
+                cr.line_to(x, y_max)
+                cr.stroke()
+        
+        # Draw center line
+        cr.set_source_rgb(0.4, 0.4, 0.4)
+        cr.set_line_width(0.5)
+        cr.move_to(0, center_y)
+        cr.line_to(width, center_y)
+        cr.stroke()
+        
+        # Draw playhead
+        if self.track.playing and self.playhead_position >= start_time and self.playhead_position <= end_time:
+            playhead_x = (self.playhead_position - start_time) / visible_duration * width
+            cr.set_source_rgb(*playhead_color)
+            cr.set_line_width(2)
+            cr.move_to(playhead_x, 0)
+            cr.line_to(playhead_x, height)
+            cr.stroke()
+    
+    def _time_from_x(self, x):
+        """Convert x coordinate to time in seconds"""
+        width = self.get_width()
+        visible_duration = self.track.duration / self.zoom_level
+        return self.scroll_offset + (x / width) * visible_duration
+    
+    def _on_press(self, gesture, n_press, x, y):
+        """Handle mouse press for selection"""
+        if not self.track.waveform_data:
+            return
+        self.selection_start = self._time_from_x(x)
+        self.selection_end = self.selection_start
+        self.is_selecting = True
+        self.queue_draw()
+    
+    def _on_release(self, gesture, n_press, x, y):
+        """Handle mouse release"""
+        self.is_selecting = False
+    
+    def _on_drag_begin(self, gesture, start_x, start_y):
+        """Handle drag start"""
+        self.drag_start_x = start_x
+    
+    def _on_drag_update(self, gesture, offset_x, offset_y):
+        """Handle drag for selection"""
+        if self.is_selecting and self.track.waveform_data:
+            x = self.drag_start_x + offset_x
+            self.selection_end = self._time_from_x(x)
+            self.queue_draw()
+    
+    def _on_drag_end(self, gesture, offset_x, offset_y):
+        """Handle drag end"""
+        self.is_selecting = False
+    
+    def _on_scroll(self, controller, dx, dy):
+        """Handle scroll for zoom"""
+        if not self.track.waveform_data:
+            return False
+        
+        # Zoom in/out
+        zoom_factor = 1.2 if dy < 0 else 1 / 1.2
+        new_zoom = max(1.0, min(100.0, self.zoom_level * zoom_factor))
+        
+        if new_zoom != self.zoom_level:
+            # Adjust scroll to keep mouse position centered
+            self.zoom_level = new_zoom
+            self.queue_draw()
+        
+        return True
+    
+    def zoom_in(self):
+        """Zoom in on the waveform"""
+        self.zoom_level = min(100.0, self.zoom_level * 1.5)
+        self.queue_draw()
+    
+    def zoom_out(self):
+        """Zoom out on the waveform"""
+        self.zoom_level = max(1.0, self.zoom_level / 1.5)
+        self.scroll_offset = max(0, min(self.scroll_offset, 
+                                        self.track.duration - self.track.duration / self.zoom_level))
+        self.queue_draw()
+    
+    def zoom_fit(self):
+        """Fit entire track in view"""
+        self.zoom_level = 1.0
+        self.scroll_offset = 0.0
+        self.queue_draw()
+    
+    def zoom_selection(self):
+        """Zoom to selection"""
+        if self.selection_start is not None and self.selection_end is not None:
+            sel_start = min(self.selection_start, self.selection_end)
+            sel_end = max(self.selection_start, self.selection_end)
+            sel_duration = sel_end - sel_start
+            if sel_duration > 0.01:  # Minimum selection
+                self.zoom_level = self.track.duration / sel_duration
+                self.scroll_offset = sel_start
+                self.queue_draw()
+    
+    def set_loop_from_selection(self):
+        """Set loop points from current selection"""
+        if self.selection_start is not None and self.selection_end is not None:
+            self.track.loop_start = min(self.selection_start, self.selection_end)
+            self.track.loop_end = max(self.selection_start, self.selection_end)
+            self.track.loop_enabled = True
+            self.queue_draw()
+    
+    def clear_loop(self):
+        """Clear loop points"""
+        self.track.loop_enabled = False
+        self.track.loop_start = 0.0
+        self.track.loop_end = 0.0
+        self.queue_draw()
+    
+    def trim_to_selection(self):
+        """Trim track to current selection"""
+        if self.selection_start is not None and self.selection_end is not None:
+            self.track.trim_start = min(self.selection_start, self.selection_end)
+            self.track.trim_end = max(self.selection_start, self.selection_end)
+            self.queue_draw()
+    
+    def clear_selection(self):
+        """Clear current selection"""
+        self.selection_start = None
+        self.selection_end = None
+        self.queue_draw()
+    
+    def select_all(self):
+        """Select entire track"""
+        self.selection_start = 0.0
+        self.selection_end = self.track.duration
+        self.queue_draw()
+    
+    def update_playhead(self, position):
+        """Update playhead position"""
+        self.playhead_position = position
+        self.queue_draw()
+    
+    def copy_selection(self):
+        """Copy the selected region to clipboard"""
+        if self.selection_start is None or self.selection_end is None:
+            return False
+        
+        if not self.track.temp_file or not os.path.exists(self.track.temp_file):
+            return False
+        
+        try:
+            import wave
+            sel_start = min(self.selection_start, self.selection_end)
+            sel_end = max(self.selection_start, self.selection_end)
+            
+            with wave.open(self.track.temp_file, 'rb') as wf:
+                sample_rate = wf.getframerate()
+                n_channels = wf.getnchannels()
+                sample_width = wf.getsampwidth()
+                
+                start_frame = int(sel_start * sample_rate)
+                end_frame = int(sel_end * sample_rate)
+                
+                wf.setpos(start_frame)
+                frames = wf.readframes(end_frame - start_frame)
+                
+                # Store clipboard data
+                self.track.clipboard_data = {
+                    'frames': frames,
+                    'sample_rate': sample_rate,
+                    'n_channels': n_channels,
+                    'sample_width': sample_width,
+                    'duration': sel_end - sel_start
+                }
+            return True
+        except Exception as e:
+            print(f"Error copying selection: {e}")
+            return False
+    
+    def cut_selection(self):
+        """Cut the selected region (copy and delete)"""
+        if not self.copy_selection():
+            return False
+        
+        return self.delete_selection()
+    
+    def delete_selection(self):
+        """Delete the selected region from the track"""
+        if self.selection_start is None or self.selection_end is None:
+            return False
+        
+        if not self.track.temp_file or not os.path.exists(self.track.temp_file):
+            return False
+        
+        try:
+            import wave
+            sel_start = min(self.selection_start, self.selection_end)
+            sel_end = max(self.selection_start, self.selection_end)
+            
+            # Read the entire file
+            with wave.open(self.track.temp_file, 'rb') as wf:
+                sample_rate = wf.getframerate()
+                n_channels = wf.getnchannels()
+                sample_width = wf.getsampwidth()
+                n_frames = wf.getnframes()
+                all_frames = wf.readframes(n_frames)
+            
+            # Calculate frame positions
+            bytes_per_frame = n_channels * sample_width
+            start_frame = int(sel_start * sample_rate)
+            end_frame = int(sel_end * sample_rate)
+            
+            # Create new audio without the selection
+            start_bytes = start_frame * bytes_per_frame
+            end_bytes = end_frame * bytes_per_frame
+            new_frames = all_frames[:start_bytes] + all_frames[end_bytes:]
+            
+            # Write back
+            with wave.open(self.track.temp_file, 'wb') as wf:
+                wf.setnchannels(n_channels)
+                wf.setsampwidth(sample_width)
+                wf.setframerate(sample_rate)
+                wf.writeframes(new_frames)
+            
+            # Update track duration
+            self.track.duration -= (sel_end - sel_start)
+            
+            # Clear selection and reload
+            self.selection_start = None
+            self.selection_end = None
+            self.load_waveform()
+            
+            return True
+        except Exception as e:
+            print(f"Error deleting selection: {e}")
+            return False
+    
+    def paste_at_position(self, position=None):
+        """Paste clipboard content at position (or selection start)"""
+        if not self.track.clipboard_data:
+            return False
+        
+        if not self.track.temp_file or not os.path.exists(self.track.temp_file):
+            return False
+        
+        if position is None:
+            position = self.selection_start if self.selection_start else 0.0
+        
+        try:
+            import wave
+            clipboard = self.track.clipboard_data
+            
+            # Read the entire file
+            with wave.open(self.track.temp_file, 'rb') as wf:
+                sample_rate = wf.getframerate()
+                n_channels = wf.getnchannels()
+                sample_width = wf.getsampwidth()
+                n_frames = wf.getnframes()
+                all_frames = wf.readframes(n_frames)
+            
+            # Check compatibility
+            if (clipboard['sample_rate'] != sample_rate or 
+                clipboard['n_channels'] != n_channels or
+                clipboard['sample_width'] != sample_width):
+                print("Clipboard audio format doesn't match track")
+                return False
+            
+            # Calculate insert position
+            bytes_per_frame = n_channels * sample_width
+            insert_frame = int(position * sample_rate)
+            insert_bytes = insert_frame * bytes_per_frame
+            
+            # Insert clipboard data
+            new_frames = all_frames[:insert_bytes] + clipboard['frames'] + all_frames[insert_bytes:]
+            
+            # Write back
+            with wave.open(self.track.temp_file, 'wb') as wf:
+                wf.setnchannels(n_channels)
+                wf.setsampwidth(sample_width)
+                wf.setframerate(sample_rate)
+                wf.writeframes(new_frames)
+            
+            # Update track duration
+            self.track.duration += clipboard['duration']
+            
+            # Reload waveform
+            self.load_waveform()
+            
+            return True
+        except Exception as e:
+            print(f"Error pasting: {e}")
+            return False
+
 
 class DrumGrid(Gtk.DrawingArea):
     """Grid widget for drum pattern editing"""
@@ -404,8 +915,10 @@ class DrumMachinePanel(Gtk.Box):
         self.set_margin_bottom(0)
         self.set_margin_start(0)
         self.set_margin_end(0)
-        # Don't expand vertically - fixed height
+        # Don't expand - fixed size
         self.set_vexpand(False)
+        self.set_hexpand(False)
+        self.set_halign(Gtk.Align.START)
         
         # Top controls bar - compact
         controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
@@ -473,13 +986,17 @@ class DrumMachinePanel(Gtk.Box):
         
         self.append(controls)
         
-        # Grid and drum controls container
+        # Grid and drum controls container - fixed width, aligned left
         grid_container = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        grid_container.set_halign(Gtk.Align.START)
+        grid_container.set_hexpand(False)
         
-        # Left panel: drum names and volume sliders (compact)
+        # Left panel: drum names and volume sliders (matches audio track controls width ~280px)
         drum_panel = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         drum_panel.set_margin_start(2)
-        drum_panel.set_margin_end(2)
+        drum_panel.set_margin_end(4)
+        drum_panel.set_size_request(280, -1)  # Match audio track controls width
+        drum_panel.set_hexpand(False)
         
         # Header spacer to align with grid header
         header_spacer = Gtk.Box()
@@ -502,12 +1019,12 @@ class DrumMachinePanel(Gtk.Box):
             name_label.add_css_class("caption")
             drum_box.append(name_label)
             
-            # Volume slider next to name - expands to fill available space
+            # Volume slider next to name - expands within the fixed-width panel
             scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 0, 127, 1)
             vol_value = self.volumes.get(drum_name, 100)
             scale.set_value(vol_value)
             scale.set_draw_value(False)
-            scale.set_hexpand(True)  # Expand to fill space
+            scale.set_hexpand(True)
             percent = int(vol_value * 100 / 127)
             scale.set_tooltip_text(f"{drum_name} volume: {percent}%")
             scale.connect("value-changed", self._on_volume_changed, drum_name)
@@ -516,11 +1033,9 @@ class DrumMachinePanel(Gtk.Box):
             
             drum_panel.append(drum_box)
         
-        # Drum panel expands to fill available space
-        drum_panel.set_hexpand(True)
         grid_container.append(drum_panel)
         
-        # Drum grid - fixed size (does not expand)
+        # Drum grid - fixed size
         # Height = header (16) + drums * row_height + padding
         grid_height = 16 + len(self.drum_order) * drum_row_height + 2
         self.grid = DrumGrid(self)
@@ -1482,9 +1997,19 @@ class TrackRow(Gtk.ListBoxRow):
     record_btn = Gtk.Template.Child()
     stop_btn = Gtk.Template.Child()
     play_btn = Gtk.Template.Child()
+    loop_btn = Gtk.Template.Child()
     volume_scale = Gtk.Template.Child()
     mute_btn = Gtk.Template.Child()
     delete_btn = Gtk.Template.Child()
+    waveform_container = Gtk.Template.Child()
+    zoom_in_btn = Gtk.Template.Child()
+    zoom_out_btn = Gtk.Template.Child()
+    zoom_fit_btn = Gtk.Template.Child()
+    loop_selection_btn = Gtk.Template.Child()
+    trim_btn = Gtk.Template.Child()
+    copy_btn = Gtk.Template.Child()
+    paste_btn = Gtk.Template.Child()
+    delete_selection_btn = Gtk.Template.Child()
     
     def __init__(self, track, window):
         super().__init__()
@@ -1499,14 +2024,33 @@ class TrackRow(Gtk.ListBoxRow):
         self.volume_scale.set_value(vol_percent)
         self.volume_scale.set_tooltip_text(f"Track volume: {vol_percent}%")
         
+        # Create waveform view
+        self.waveform_view = WaveformView(self)
+        self.waveform_container.append(self.waveform_view)
+        
         # Connect signals
         self.edit_btn.connect("clicked", self.on_edit_clicked)
         self.record_btn.connect("clicked", self.on_record_clicked)
         self.stop_btn.connect("clicked", self.on_stop_clicked)
         self.play_btn.connect("clicked", self.on_play_clicked)
+        self.loop_btn.connect("toggled", self.on_loop_toggled)
         self.volume_scale.connect("value-changed", self.on_volume_changed)
         self.mute_btn.connect("toggled", self.on_mute_toggled)
         self.delete_btn.connect("clicked", self.on_delete_clicked)
+        
+        # Waveform control signals
+        self.zoom_in_btn.connect("clicked", lambda b: self.waveform_view.zoom_in())
+        self.zoom_out_btn.connect("clicked", lambda b: self.waveform_view.zoom_out())
+        self.zoom_fit_btn.connect("clicked", lambda b: self.waveform_view.zoom_fit())
+        self.loop_selection_btn.connect("clicked", self.on_loop_selection_clicked)
+        self.trim_btn.connect("clicked", self.on_trim_clicked)
+        self.copy_btn.connect("clicked", self.on_copy_clicked)
+        self.paste_btn.connect("clicked", self.on_paste_clicked)
+        self.delete_selection_btn.connect("clicked", self.on_delete_selection_clicked)
+        
+        # Load waveform if track has audio
+        if track.temp_file and os.path.exists(track.temp_file):
+            GLib.idle_add(self.waveform_view.load_waveform)
     
     def on_edit_clicked(self, button):
         self.window.on_track_rename(self)
@@ -1529,6 +2073,61 @@ class TrackRow(Gtk.ListBoxRow):
     def on_delete_clicked(self, button):
         self.window.on_track_delete(self)
     
+    def on_loop_toggled(self, button):
+        """Toggle loop mode for the track"""
+        self.track.loop_enabled = button.get_active()
+        if self.track.loop_enabled:
+            # If no loop region set, use entire track
+            if self.track.loop_start >= self.track.loop_end:
+                self.track.loop_start = 0.0
+                self.track.loop_end = self.track.duration
+        self.waveform_view.queue_draw()
+    
+    def on_loop_selection_clicked(self, button):
+        """Set loop region from current selection"""
+        self.waveform_view.set_loop_from_selection()
+        self.loop_btn.set_active(True)
+        self.track.loop_enabled = True
+    
+    def on_trim_clicked(self, button):
+        """Trim track to current selection"""
+        self.waveform_view.trim_to_selection()
+        app = self.window.get_application()
+        app.project_dirty = True
+    
+    def on_copy_clicked(self, button):
+        """Copy selected region"""
+        if self.waveform_view.copy_selection():
+            self.update_waveform_controls()
+    
+    def on_paste_clicked(self, button):
+        """Paste clipboard content"""
+        if self.waveform_view.paste_at_position():
+            app = self.window.get_application()
+            app.project_dirty = True
+            self.update_waveform_controls()
+    
+    def on_delete_selection_clicked(self, button):
+        """Delete selected region"""
+        if self.waveform_view.delete_selection():
+            app = self.window.get_application()
+            app.project_dirty = True
+            self.update_waveform_controls()
+    
+    def update_waveform_controls(self):
+        """Update waveform control button sensitivity"""
+        has_audio = self.track.temp_file and os.path.exists(self.track.temp_file)
+        has_selection = (self.waveform_view.selection_start is not None and 
+                        self.waveform_view.selection_end is not None)
+        has_clipboard = self.track.clipboard_data is not None
+        
+        self.loop_btn.set_sensitive(has_audio)
+        self.loop_selection_btn.set_sensitive(has_audio and has_selection)
+        self.trim_btn.set_sensitive(has_audio and has_selection)
+        self.copy_btn.set_sensitive(has_audio and has_selection)
+        self.paste_btn.set_sensitive(has_audio and has_clipboard)
+        self.delete_selection_btn.set_sensitive(has_audio and has_selection)
+    
     def set_recording(self, recording):
         self.record_btn.set_sensitive(not recording)
         self.stop_btn.set_sensitive(recording)
@@ -1541,6 +2140,9 @@ class TrackRow(Gtk.ListBoxRow):
             self.remove_css_class("error")
             if self.track.temp_file and os.path.exists(self.track.temp_file):
                 self.play_btn.set_sensitive(True)
+                # Reload waveform after recording
+                GLib.idle_add(self.waveform_view.load_waveform)
+                self.update_waveform_controls()
     
     def set_playing(self, playing, paused=False):
         if playing:
@@ -1580,6 +2182,8 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
     drum_machine_btn = Gtk.Template.Child()
     status_label = Gtk.Template.Child()
     track_list = Gtk.Template.Child()
+    drum_machine_container = Gtk.Template.Child()
+    main_paned = Gtk.Template.Child()
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -1592,6 +2196,9 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
         self.drum_machine_panel = None
         self.drum_machine_visible = False
         self._pending_drum_machine_state = None
+        
+        # Hide drum machine container initially
+        self.drum_machine_container.set_visible(False)
         
         # Connect signals
         self.add_track_btn.connect("clicked", self.on_add_track)
@@ -2632,24 +3239,21 @@ class AudioRecorderWindow(Adw.ApplicationWindow):
             # Connect to changes to mark project dirty
             self.drum_machine_panel.connect_dirty_callback(self._on_drum_machine_changed)
             
-            # Find the main content box by going up from status_label
-            # status_label -> main_box
-            main_box = self.status_label.get_parent()
-            if main_box and hasattr(main_box, 'append'):
-                main_box.append(self.drum_machine_panel)
-            else:
-                # Fallback: traverse from track_list
-                widget = self.track_list
-                while widget is not None:
-                    parent = widget.get_parent()
-                    if parent and isinstance(parent, Gtk.Box):
-                        parent.append(self.drum_machine_panel)
-                        break
-                    widget = parent
+            # Add to the drum machine container (bottom pane)
+            self.drum_machine_container.append(self.drum_machine_panel)
         
         # Toggle visibility
         self.drum_machine_visible = not self.drum_machine_visible
         self.drum_machine_panel.set_visible(self.drum_machine_visible)
+        self.drum_machine_container.set_visible(self.drum_machine_visible)
+        
+        # Adjust paned position to give drum machine appropriate space
+        if self.drum_machine_visible:
+            # Get window height and set paned to leave enough space for drum machine
+            window_height = self.get_height()
+            drum_machine_height = 460  # Space for all 10 drum tracks, aligned to bottom
+            if window_height > drum_machine_height + 100:
+                self.main_paned.set_position(window_height - drum_machine_height)
         
         # Sync toggle button state
         if self.drum_machine_btn.get_active() != self.drum_machine_visible:

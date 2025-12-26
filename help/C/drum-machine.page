@@ -62,6 +62,16 @@
     <p>Available instruments: Kick, Snare, Hi-Hat Closed, Hi-Hat Open, Tom Hi, Tom Mid, Tom Lo, Crash, Ride, Cowbell</p>
   </section>
 
+  <section id="volumes">
+    <title>Volume Controls</title>
+    <p>Each drum track has an individual volume slider on the right side of the grid. Adjust these to mix your drum pattern:</p>
+    <list>
+      <item><p>Volume ranges from 0 (silent) to 127 (maximum)</p></item>
+      <item><p>Default volume is 100 for all drums</p></item>
+      <item><p>Volume settings are saved with your project</p></item>
+    </list>
+  </section>
+
   <section id="time-signatures">
     <title>Understanding Time Signatures</title>
     <p>The time signature determines the number of steps per bar:</p>

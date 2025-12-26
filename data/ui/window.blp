@@ -76,26 +76,33 @@ template $AudioRecorderWindow : Adw.ApplicationWindow {
       }
     }
 
-    content: Adw.Clamp {
-      maximum-size: 600;
+    content: Gtk.Paned outer_paned {
+      orientation: horizontal;
+      shrink-start-child: false;
+      shrink-end-child: false;
+      position: 640;
 
+      [start]
       Gtk.Box main_box {
         orientation: vertical;
-        spacing: 12;
-        margin-top: 12;
-        margin-bottom: 12;
-        margin-start: 12;
-        margin-end: 12;
+        spacing: 2;
+        margin-top: 2;
+        margin-bottom: 0;
+        margin-start: 8;
+        margin-end: 4;
+        hexpand: true;
 
         Gtk.Label status_label {
           label: "Ready to record";
+          halign: start;
 
           styles ["dim-label"]
         }
 
         Gtk.ScrolledWindow {
           vexpand: true;
-          min-content-height: 200;
+          hexpand: true;
+          min-content-height: 100;
 
           Gtk.ListBox track_list {
             selection-mode: none;
@@ -103,6 +110,11 @@ template $AudioRecorderWindow : Adw.ApplicationWindow {
             styles ["boxed-list"]
           }
         }
+      }
+
+      [end]
+      Gtk.Box {
+        hexpand: true;
       }
     };
   }

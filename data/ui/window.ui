@@ -91,11 +91,13 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
           </object>
         </child>
         <property name="content">
-          <object class="GtkPaned" id="outer_paned">
-            <property name="orientation">0</property>
+          <object class="GtkPaned" id="main_paned">
+            <property name="orientation">1</property>
             <property name="shrink-start-child">false</property>
             <property name="shrink-end-child">false</property>
-            <property name="position">640</property>
+            <property name="resize-start-child">true</property>
+            <property name="resize-end-child">false</property>
+            <property name="wide-handle">true</property>
             <child type="start">
               <object class="GtkBox" id="main_box">
                 <property name="orientation">1</property>
@@ -103,8 +105,8 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                 <property name="margin-top">2</property>
                 <property name="margin-bottom">0</property>
                 <property name="margin-start">8</property>
-                <property name="margin-end">4</property>
-                <property name="hexpand">true</property>
+                <property name="margin-end">8</property>
+                <property name="vexpand">true</property>
                 <child>
                   <object class="GtkLabel" id="status_label">
                     <property name="label">Ready to record</property>
@@ -118,7 +120,7 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
                   <object class="GtkScrolledWindow">
                     <property name="vexpand">true</property>
                     <property name="hexpand">true</property>
-                    <property name="min-content-height">100</property>
+                    <property name="min-content-height">150</property>
                     <child>
                       <object class="GtkListBox" id="track_list">
                         <property name="selection-mode">0</property>
@@ -132,8 +134,14 @@ corresponding .blp file and regenerate this file with blueprint-compiler.
               </object>
             </child>
             <child type="end">
-              <object class="GtkBox">
-                <property name="hexpand">true</property>
+              <object class="GtkBox" id="drum_machine_container">
+                <property name="orientation">1</property>
+                <property name="margin-start">8</property>
+                <property name="margin-end">8</property>
+                <property name="margin-bottom">2</property>
+                <property name="vexpand">false</property>
+                <property name="valign">1</property>
+                <property name="height-request">440</property>
               </object>
             </child>
           </object>

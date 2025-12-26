@@ -23,7 +23,9 @@
       <li>Project save/load for session management</li>
       <li>Import WAV files and export individual or mixed audio</li>
       <li>Chromatic tuner with high-contrast accessible design</li>
-      <li>Drum machine with FluidSynth MIDI playback and custom time signatures</li>
+      <li>Drum machine with 10 instruments, per-track volume, and custom time signatures</li>
+      <li>Individual track volume control with real-time adjustment</li>
+      <li>Resizable panel layout for flexible workspace</li>
       <li>Full keyboard navigation with accessibility-friendly shortcuts</li>
     </ul>
   </description>
@@ -82,6 +84,19 @@
   -->
   
   <releases>
+    <release version="1.1.0" date="2025-12-26">
+      <description>
+        <p>Volume control and UI improvements:</p>
+        <ul>
+          <li>Individual volume sliders for audio tracks</li>
+          <li>Per-instrument volume control for drum machine</li>
+          <li>Extended drum kit with 10 instruments</li>
+          <li>Compact UI with resizable panel layout</li>
+          <li>App starts maximized by default</li>
+          <li>Volume tooltips showing percentage</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2025-12-08">
       <description>
         <p>Initial release with full feature set:</p>

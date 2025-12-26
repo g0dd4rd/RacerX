@@ -2,65 +2,70 @@ using Gtk 4.0;
 
 template $TrackRow : Gtk.ListBoxRow {
   Gtk.Box {
-    orientation: vertical;
-    spacing: 2;
-    margin-start: 8;
-    margin-end: 8;
+    orientation: horizontal;
+    spacing: 8;
+    margin-start: 4;
+    margin-end: 4;
     margin-top: 4;
     margin-bottom: 4;
 
-    // Row 1: Edit button, track name, status
-    Gtk.Box {
-      orientation: horizontal;
+    // Left panel: Controls (~25% width)
+    Gtk.Box controls_panel {
+      orientation: vertical;
       spacing: 4;
+      width-request: 280;
+      hexpand: false;
 
-      Gtk.Button edit_btn {
-        icon-name: "document-edit-symbolic";
-        tooltip-text: "Rename track";
-        valign: center;
+      // Track name and status (same row)
+      Gtk.Box {
+        orientation: horizontal;
+        spacing: 4;
 
-        styles ["flat", "circular"]
+        Gtk.Button edit_btn {
+          icon-name: "document-edit-symbolic";
+          tooltip-text: "Rename track";
+          valign: center;
+
+          styles ["flat", "circular"]
+        }
+
+        Gtk.Label track_label {
+          halign: start;
+          xalign: 0;
+          ellipsize: end;
+          valign: center;
+          
+          styles ["heading"]
+        }
+
+        Gtk.Label status_label {
+          halign: start;
+          hexpand: true;
+          xalign: 0;
+          valign: center;
+          
+          styles ["dim-label", "caption"]
+        }
       }
 
-      Gtk.Label track_label {
-        halign: start;
-        xalign: 0;
-        ellipsize: end;
-        
-        styles ["heading"]
-      }
-
-      Gtk.Label status_label {
-        halign: start;
-        hexpand: true;
-        xalign: 0;
-        
-        styles ["dim-label", "caption"]
-      }
-    }
-
-    // Row 2: Controls and volume in one row
-    Gtk.Box {
-      orientation: horizontal;
-      spacing: 6;
-
-      // Control buttons
+      // Playback controls - single row
       Gtk.Box {
         orientation: horizontal;
         spacing: 2;
+        halign: start;
         
         styles ["linked"]
 
         Gtk.Button record_btn {
           icon-name: "media-record-symbolic";
-          tooltip-text: "Start recording";
+          tooltip-text: "Record";
 
           styles ["flat"]
         }
 
         Gtk.Button stop_btn {
           icon-name: "media-playback-stop-symbolic";
-          tooltip-text: "Stop recording";
+          tooltip-text: "Stop";
           sensitive: false;
 
           styles ["flat"]
@@ -68,7 +73,15 @@ template $TrackRow : Gtk.ListBoxRow {
 
         Gtk.Button play_btn {
           icon-name: "media-playback-start-symbolic";
-          tooltip-text: "Play recording";
+          tooltip-text: "Play";
+          sensitive: false;
+
+          styles ["flat"]
+        }
+
+        Gtk.ToggleButton loop_btn {
+          icon-name: "media-playlist-repeat-symbolic";
+          tooltip-text: "Loop";
           sensitive: false;
 
           styles ["flat"]
@@ -76,39 +89,149 @@ template $TrackRow : Gtk.ListBoxRow {
 
         Gtk.ToggleButton mute_btn {
           icon-name: "audio-volume-high-symbolic";
-          tooltip-text: "Mute track";
+          tooltip-text: "Mute";
 
           styles ["flat"]
         }
 
         Gtk.Button delete_btn {
           icon-name: "edit-delete-symbolic";
-          tooltip-text: "Delete track";
+          tooltip-text: "Delete";
 
           styles ["flat", "destructive-action"]
         }
       }
 
       // Volume control
-      Gtk.Label {
-        label: "Vol";
+      Gtk.Box {
+        orientation: horizontal;
+        spacing: 4;
+
+        Gtk.Label {
+          label: "Vol";
+          
+          styles ["dim-label", "caption"]
+        }
+
+        Gtk.Scale volume_scale {
+          orientation: horizontal;
+          hexpand: true;
+          adjustment: Gtk.Adjustment {
+            lower: 0;
+            upper: 100;
+            value: 100;
+            step-increment: 1;
+            page-increment: 10;
+          };
+          draw-value: false;
+          tooltip-text: "Track volume";
+          valign: center;
+        }
+      }
+    }
+
+    // Right panel: Waveform (expands to fill remaining space)
+    Gtk.Box waveform_panel {
+      orientation: vertical;
+      spacing: 2;
+      hexpand: true;
+
+      // Waveform display
+      Gtk.Frame waveform_frame {
+        hexpand: true;
+        vexpand: true;
         
-        styles ["dim-label", "caption"]
+        Gtk.Box waveform_container {
+          orientation: vertical;
+        }
       }
 
-      Gtk.Scale volume_scale {
+      // Waveform controls bar
+      Gtk.Box {
         orientation: horizontal;
-        hexpand: true;
-        adjustment: Gtk.Adjustment {
-          lower: 0;
-          upper: 100;
-          value: 100;
-          step-increment: 1;
-          page-increment: 10;
-        };
-        draw-value: false;
-        tooltip-text: "Track volume";
-        valign: center;
+        spacing: 4;
+
+        // Zoom controls
+        Gtk.Box {
+          orientation: horizontal;
+          spacing: 2;
+          
+          styles ["linked"]
+
+          Gtk.Button zoom_in_btn {
+            icon-name: "zoom-in-symbolic";
+            tooltip-text: "Zoom in";
+
+            styles ["flat"]
+          }
+
+          Gtk.Button zoom_out_btn {
+            icon-name: "zoom-out-symbolic";
+            tooltip-text: "Zoom out";
+
+            styles ["flat"]
+          }
+
+          Gtk.Button zoom_fit_btn {
+            icon-name: "zoom-fit-best-symbolic";
+            tooltip-text: "Fit to view";
+
+            styles ["flat"]
+          }
+        }
+
+        // Spacer
+        Gtk.Box {
+          hexpand: true;
+        }
+
+        // Edit controls
+        Gtk.Box {
+          orientation: horizontal;
+          spacing: 2;
+          
+          styles ["linked"]
+
+          Gtk.Button loop_selection_btn {
+            icon-name: "media-playlist-repeat-symbolic";
+            tooltip-text: "Loop selection";
+            sensitive: false;
+
+            styles ["flat"]
+          }
+
+          Gtk.Button trim_btn {
+            icon-name: "edit-cut-symbolic";
+            tooltip-text: "Trim to selection";
+            sensitive: false;
+
+            styles ["flat"]
+          }
+
+          Gtk.Button copy_btn {
+            icon-name: "edit-copy-symbolic";
+            tooltip-text: "Copy";
+            sensitive: false;
+
+            styles ["flat"]
+          }
+
+          Gtk.Button paste_btn {
+            icon-name: "edit-paste-symbolic";
+            tooltip-text: "Paste";
+            sensitive: false;
+
+            styles ["flat"]
+          }
+
+          Gtk.Button delete_selection_btn {
+            icon-name: "user-trash-symbolic";
+            tooltip-text: "Delete selection";
+            sensitive: false;
+
+            styles ["flat"]
+          }
+        }
       }
     }
   }

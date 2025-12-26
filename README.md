@@ -10,14 +10,16 @@ A simple multi-track audio recorder for GNOME, built with GTK4 and libadwaita.
 
 - **Multi-track recording** — Record multiple audio tracks independently
 - **Simultaneous playback** — Play all tracks together to preview your mix
+- **Track volume control** — Individual volume sliders for each track with real-time adjustment
 - **True pause/resume** — Pause and resume playback without losing position
 - **Track muting** — Mute individual tracks during playback
 - **Input monitoring** — Hear your microphone input in real-time
-- **Project management** — Save and load projects with all recordings
+- **Project management** — Save and load projects with all recordings and settings
 - **Import/Export** — Import WAV files and export individual tracks or mixed audio
 - **Chromatic tuner** — Built-in tuner with high-contrast accessible design for tuning any instrument
-- **Drum machine** — Pattern-based drum sequencer with FluidSynth MIDI sounds and custom time signatures
+- **Drum machine** — 10-instrument drum sequencer with per-track volume, FluidSynth MIDI sounds, and custom time signatures
 - **Keyboard shortcuts** — Full keyboard navigation with accessibility-friendly shortcuts
+- **Resizable layout** — Adjustable panel widths with maximized window by default
 - **GNOME integration** — Native look and feel with libadwaita
 
 ## Requirements

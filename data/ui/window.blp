@@ -76,11 +76,13 @@ template $AudioRecorderWindow : Adw.ApplicationWindow {
       }
     }
 
-    content: Gtk.Paned outer_paned {
-      orientation: horizontal;
+    content: Gtk.Paned main_paned {
+      orientation: vertical;
       shrink-start-child: false;
       shrink-end-child: false;
-      position: 640;
+      resize-start-child: true;
+      resize-end-child: false;
+      wide-handle: true;
 
       [start]
       Gtk.Box main_box {
@@ -89,8 +91,8 @@ template $AudioRecorderWindow : Adw.ApplicationWindow {
         margin-top: 2;
         margin-bottom: 0;
         margin-start: 8;
-        margin-end: 4;
-        hexpand: true;
+        margin-end: 8;
+        vexpand: true;
 
         Gtk.Label status_label {
           label: "Ready to record";
@@ -102,7 +104,7 @@ template $AudioRecorderWindow : Adw.ApplicationWindow {
         Gtk.ScrolledWindow {
           vexpand: true;
           hexpand: true;
-          min-content-height: 100;
+          min-content-height: 150;
 
           Gtk.ListBox track_list {
             selection-mode: none;
@@ -113,8 +115,14 @@ template $AudioRecorderWindow : Adw.ApplicationWindow {
       }
 
       [end]
-      Gtk.Box {
-        hexpand: true;
+      Gtk.Box drum_machine_container {
+        orientation: vertical;
+        margin-start: 8;
+        margin-end: 8;
+        margin-bottom: 2;
+        vexpand: false;
+        valign: start;
+        height-request: 440;
       }
     };
   }

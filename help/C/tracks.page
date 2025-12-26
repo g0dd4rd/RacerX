@@ -52,6 +52,20 @@
     </note>
   </section>
 
+  <section id="volume-control">
+    <title>Adjusting Volume</title>
+    <p>Each track has its own volume slider to control its loudness in the mix:</p>
+    <list>
+      <item><p>Drag the volume slider left to decrease volume, right to increase.</p></item>
+      <item><p>Volume ranges from 0% (silent) to 100% (full volume).</p></item>
+      <item><p>Volume changes are applied instantly during playback.</p></item>
+      <item><p>Volume settings are saved with your project.</p></item>
+    </list>
+    <note style="tip">
+      <p>Use volume sliders to balance your tracks. Lower louder tracks and raise quieter ones to create a better mix.</p>
+    </note>
+  </section>
+
   <section id="mute-track">
     <title>Muting a Track</title>
     <p>Muting allows you to silence a track during playback while keeping it in the project:</p>
